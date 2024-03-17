@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
 import getpass
+import os
 import re
+import subprocess
 import threading
 import time
 from datetime import datetime, timedelta
 
+import pytz
 from colorama import init, Fore, Style
 from playwright.sync_api import Playwright, sync_playwright
 from playwright.sync_api import TimeoutError
@@ -46,12 +49,25 @@ def run(playwright: Playwright) -> None:
     Enjoy xoxo
     """
 
+    # if past 12:15
+    def run_cmatrix_for_seconds(seconds):
+        cmatrix_proc = subprocess.Popen(['cmatrix'])
+        time.sleep(seconds)
+        cmatrix_proc.terminate()
+        cmatrix_proc.wait()
+
+    def clear_screen():
+        os.system('cls' if os.name == 'nt' else 'clear')
+
     current_datetime = datetime.now(beijing)
     cutoff_time = current_datetime.replace(hour=12, minute=15, second=0, microsecond=0)
     # Check if the current time is past the cutoff time
     if current_datetime > cutoff_time:
         print("It is already past 12:15PM. You should try again tomorrow before 12:00.")
         time.sleep(5)
+        run_cmatrix_for_seconds(5)
+        clear_screen()
+        print("It is already past 12:15PM. You should try again tomorrow before 12:00.")
         quit()
     else:
 
@@ -172,6 +188,35 @@ def run(playwright: Playwright) -> None:
     weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
     weekday = weekdays[next_week_date.weekday()]
 
+    #       ############################### AQUARIUM ANIMATION START ###############################
+    def run_ascii_aquarium_until_1157():
+        def run_ascii_aquarium():
+            return subprocess.Popen(['asciiquarium'])  # Assuming asciiquarium is in the PATH
+
+        def check_time(beijing, aquarium_proc):
+            while True:
+                now = datetime.now(beijing)
+                if now.hour == 11 and now.minute >= 57:
+                    aquarium_proc.terminate()
+                    aquarium_proc.wait()
+                    clear_screen()
+                    break
+                time.sleep(60)  # Check the time every minute
+
+        def clear_screen():
+            os.system('cls' if os.name == 'nt' else 'clear')
+
+        beijing = pytz.timezone('Asia/Shanghai')
+
+        aquarium_proc = run_ascii_aquarium()
+        time_check_thread = threading.Thread(target=check_time, args=(beijing, aquarium_proc))
+        time_check_thread.start()
+        time_check_thread.join()
+
+    run_ascii_aquarium_until_1157()
+    clear_screen()
+    #           ############################### AQUARIUM ANIMATION END ###############################
+
     # WAITING APPROACH 1
 
     # Countdown to 12:00:00
@@ -248,24 +293,91 @@ def run(playwright: Playwright) -> None:
     #       ############################### WORKS, DO NOT TOUCH THIS ###############################
 
     # Timeslot selection
-    if chosen_timeslot == '7':
-        page1.locator(".inner-seat > div").first.click()
-    else:
-        page1.locator(timeslots[int(chosen_timeslot)]).click()
-
-    page1.get_by_role("button", name="立即下单").click()
-    page1.locator("label span").nth(1).click()
-    page1.get_by_role("button", name="提交订单").click()  # As fast as possible until here
+    # if chosen_timeslot == '7':
+    #     page1.locator(".inner-seat > div").first.click()
+    # else:
+    #     page1.locator(timeslots[int(chosen_timeslot)]).click()
+    #
+    # page1.get_by_role("button", name="立即下单").click()
+    # page1.locator("label span").nth(1).click()
+    # page1.get_by_role("button", name="提交订单").click()  # As fast as possible until here
 
     # Here add alternative booking dates if error
+
+    # edit the code starting from here, so it would work
+
+    def attempt_booking(page1, timeslot):
+        success = False
+        try:
+            # Attempt to click on the timeslot
+            page1.locator(timeslots[timeslot]).click()
+            page1.get_by_role("button", name="立即下单").click()
+            page1.locator("label span").nth(1).click()
+            page1.get_by_role("button", name="提交订单").click()
+
+            # Wait for either a success message or an error message
+            try:
+                # Adjust the selector based on the actual success message
+                page1.wait_for_selector("text=Booking successful", timeout=2000) # toto nebude existovat, tuto zmenit na nieco realne
+                success = True
+                print(f"Successfully booked timeslot {timeslot}.")
+            except TimeoutError:
+                # If the success message doesn't appear within the timeout, check for error messages
+                if page1.is_visible("text=Error message related to booking failure"): # toto tiez nebude nikdy wtf??
+                    print(f"Failed to book for timeslot {timeslot}, due to an error message.")
+                else:
+                    # If there's no error message, the booking might have been successful but without confirmation
+                    print(f"Booking status for timeslot {timeslot} is unclear.")
+                    # Consider adding logic here to verify booking status, such as checking the booking list
+
+        except Exception as e:
+            print(f"An exception occurred while trying to book timeslot {timeslot}: {e}")
+            success = False
+
+        return success
+
+    def find_alternative_timeslot(chosen_timeslot, direction='both', step=1, limit=2):
+        # Initialize adjustments to an empty list to ensure it is always defined
+        adjustments = []
+
+        # Generates alternative timeslots within a given range and direction
+        if direction == 'both':
+            adjustments = [i for j in range(1, limit + 1) for i in (j, -j)]
+        elif direction == 'before':
+            adjustments = [-j for j in range(1, limit + 1)]
+        elif direction == 'after':
+            adjustments = [j for j in range(1, limit + 1)]
+
+        for adjustment in adjustments:
+            alternative = chosen_timeslot + adjustment
+            if 8 <= alternative <= 21:  # Assuming booking times are between 8 and 21 hours
+                yield alternative
+
+    chosen_timeslot_int = int(chosen_timeslot)
+    if not attempt_booking(page1, chosen_timeslot_int):
+        print("Attempting to book an alternative timeslot...")
+        for alternative_timeslot in find_alternative_timeslot(chosen_timeslot_int):
+            if attempt_booking(page1, alternative_timeslot):
+                print(f"Successfully booked an alternative timeslot: {alternative_timeslot}")
+                break
+        else:
+            print("Failed to book any alternative timeslot.")
+    else:
+        print("No need to book an alternative timeslot. Preferred timeslot was successfully booked.")
+
+    # edit the code up to here, so it would work
 
     latency_part2_end = time.time()
     latency_part2_report_end = latency_part2_end - latency_part2_start
     print(
         Fore.GREEN + f"\n\033[1mBooking completed at {datetime.now(beijing)} in {latency_part2_report_end:.2f} ms!\033[0m" + Style.RESET_ALL)
+    # print(
+    #     Fore.CYAN + f"\n\nLatency:\nPreparatory stage: {latency_part1_report:.2f}\n"
+    #                 f"Booking page accessed: {latency_part2_report_mid}\n"
+    #                 f"Booking completed: {latency_part2_report_end}" + Style.RESET_ALL)
     page1.get_by_role("button", name="立即支付").click()
     page1.get_by_role("button", name="确 定").click()
-    page1.get_by_role("button", name="yes").click()
+    page1.get_by_role("button", name="yes").click(timeout=900000)  # Increased timeout
 
     # Function to wait for Enter press
     def wait_for_enter():

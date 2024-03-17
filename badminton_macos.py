@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
 import getpass
+import os
 import re
+import subprocess
 import threading
 import time
 from datetime import datetime, timedelta
 
+import pytz
 from colorama import init, Fore, Style
 from playwright.sync_api import Playwright, sync_playwright
 from playwright.sync_api import TimeoutError
@@ -15,27 +18,35 @@ init()
 
 chosen_timeout = 200
 
-timeslots = {8: "div:nth-child(3) > .seat > .inner-seat > div",
-             9: "div:nth-child(4) > .seat > .inner-seat > div",
-             10: "div:nth-child(5) > .seat > .inner-seat > div",
-             11: "div:nth-child(6) > .seat > .inner-seat > div",
-             12: "div:nth-child(7) > .seat > .inner-seat > div",
-             13: "div:nth-child(8) > .seat > .inner-seat > div",
-             14: "div:nth-child(9) > .seat > .inner-seat > div",
-             15: "div:nth-child(10) > .seat > .inner-seat > div",
-             16: "div:nth-child(11) > .seat > .inner-seat > div",
-             17: "div:nth-child(12) > .seat > .inner-seat > div",
-             18: "div:nth-child(13) > .seat > .inner-seat > div",
-             19: "div:nth-child(14) > .seat > .inner-seat > div",
-             20: "div:nth-child(15) > .seat > .inner-seat > div",
-             21: "div:nth-child(16) > .seat > .inner-seat > div"}
+# First court
+# page1.locator(".inner-seat > div > img").first.click()
+# page1.locator("div:nth-child(3) > div > .inner-seat > div > img").first.click()
+# page1.locator("div:nth-child(16) > div > .inner-seat > div > img").first.click()
+
+# Court 4
+# page1.locator("div:nth-child(4) > .inner-seat > div > img").first.click()  # 7AM
+
+timeslots = {8: "div:nth-child(3) > div:nth-child(4) > .inner-seat > div > img",
+             9: "div:nth-child(4) > div:nth-child(4) > .inner-seat > div > img",
+             10: "div:nth-child(5) > div:nth-child(4) > .inner-seat > div > img",
+             11: "div:nth-child(6) > div:nth-child(4) > .inner-seat > div > img",
+             12: "div:nth-child(7) > div:nth-child(4) > .inner-seat > div > img",
+             13: "div:nth-child(8) > div:nth-child(4) > .inner-seat > div > img",
+             14: "div:nth-child(9) > div:nth-child(4) > .inner-seat > div > img",
+             15: "div:nth-child(10) > div:nth-child(4) > .inner-seat > div > img",
+             16: "div:nth-child(11) > div:nth-child(4) > .inner-seat > div > img",
+             17: "div:nth-child(12) > div:nth-child(4) > .inner-seat > div > img",
+             18: "div:nth-child(13) > div:nth-child(4) > .inner-seat > div > img",
+             19: "div:nth-child(14) > div:nth-child(4) > .inner-seat > div > img",
+             20: "div:nth-child(15) > div:nth-child(4) > .inner-seat > div > img",
+             21: "div:nth-child(16) > div:nth-child(4) > .inner-seat > div > img"}
 
 beijing = timezone('Asia/Shanghai')
 
 
 def run(playwright: Playwright) -> None:
     """
-    This is a script that books a tennis court in SJTU Xuhui campus.
+    This is a script that books a badminton court in SJTU Xuhui campus.
     Script navigates you to the booking page, then waits for 12:00:01(Beijing time), for the booking to open,
      then proceeds.
     Script supports booking only one week ahead, meaning if today is Monday 11:00AM, you're booking for next Monday.
@@ -46,12 +57,25 @@ def run(playwright: Playwright) -> None:
     Enjoy xoxo
     """
 
+    # if past 12:15
+    def run_cmatrix_for_seconds(seconds):
+        cmatrix_proc = subprocess.Popen(['cmatrix'])
+        time.sleep(seconds)
+        cmatrix_proc.terminate()
+        cmatrix_proc.wait()
+
+    def clear_screen():
+        os.system('cls' if os.name == 'nt' else 'clear')
+
     current_datetime = datetime.now(beijing)
     cutoff_time = current_datetime.replace(hour=12, minute=15, second=0, microsecond=0)
     # Check if the current time is past the cutoff time
     if current_datetime > cutoff_time:
         print("It is already past 12:15PM. You should try again tomorrow before 12:00.")
         time.sleep(5)
+        run_cmatrix_for_seconds(5)
+        clear_screen()
+        print("It is already past 12:15PM. You should try again tomorrow before 12:00.")
         quit()
     else:
 
@@ -64,7 +88,7 @@ def run(playwright: Playwright) -> None:
         # Use the formatted date in the print statement
 
         print(
-            "THIS IS A SCRIPT THAT BOOKS A TENNIS COURT ON SJTU XUHUI CAMPUS!\n\n"
+            "THIS IS A SCRIPT THAT BOOKS A BADMINTON COURT ON SJTU XUHUI CAMPUS!\n\n"
             "The script navigates you to the booking page, then waits until 12:00:01(Beijing time) for the booking to"
             " open, then proceeds.\n"
             "The script supports booking\033[1m only one week ahead\033[0m, meaning if today is Monday 11:00AM, "
@@ -72,9 +96,10 @@ def run(playwright: Playwright) -> None:
             "Otherwise ur lazy ass can just do it yourself without the script. \n"
             "If you get an error message, send it together with hongbao to:"
             " \033[1m\033[94m Wechat ID: kasyan98\033[0m GitHub: https://github.com/kasyan1337\n\n"
-            "Enjoy xoxo\n")
+            "Enjoy xoxo\n\n"
+        )
 
-        print(f"You are booking the tennis court for \033[43m{future_date_formatted}\033[0m")
+        print(f"You are booking the badminton court for \033[43m{future_date_formatted}\033[0m")
 
     # script start
 
@@ -140,26 +165,24 @@ def run(playwright: Playwright) -> None:
         page.get_by_text("Sports Venue Booking 标签：暂无评分收藏").click()
     page1 = page1_info.value
     page1.get_by_placeholder("请输入场馆名称或活动类型名称").click()
-    page1.get_by_placeholder("请输入场馆名称或活动类型名称").fill("网球")
+    page1.get_by_placeholder("请输入场馆名称或活动类型名称").fill("羽毛球")
     page1.get_by_placeholder("请输入场馆名称或活动类型名称").press("Enter")
     time.sleep(1)
 
-    # page1.locator("li").filter(has_text="胡晓明网球场 地址：闵行校区 时间：07:00-22:").get_by_role("img").click() # Minhang
-    page1.locator("li").filter(has_text="徐汇校区网球场 地址：徐汇校区 时间：07:00-22:").get_by_role(
-        "img").click()  # Xuhui
+    page1.locator("li").filter(has_text="徐汇校区体育馆 地址：徐汇校区 时间：09:00-22:").get_by_role("img").click() # Xuhui
+
     time.sleep(1)
     page1.locator("#loginSelection").get_by_role("button", name="校内人员登录").click()
     time.sleep(1)
     page1.get_by_placeholder("请输入场馆名称或活动类型名称").click()
     time.sleep(1)
-    page1.get_by_placeholder("请输入场馆名称或活动类型名称").fill("网球")
+    page1.get_by_placeholder("请输入场馆名称或活动类型名称").fill("羽毛球")
     time.sleep(1)
     page1.get_by_placeholder("请输入场馆名称或活动类型名称").press("Enter")
     time.sleep(1)
-    # page1.locator("li").filter(has_text="胡晓明网球场 地址：闵行校区 时间：07:00-22:").get_by_role("img").click() # Minhang
-    page1.locator("li").filter(has_text="徐汇校区网球场 地址：徐汇校区 时间：07:00-22:").get_by_role(
-        "img").click()  # Xuhui
+    page1.locator("li").filter(has_text="徐汇校区体育馆 地址：徐汇校区 时间：09:00-22:").get_by_role("img").click() # Xuhui
     time.sleep(1)
+    page1.get_by_role("tab", name="羽毛球").click()
 
     latency_part1_end = time.time()
     latency_part1_report = latency_part1_end - latency_part1_start
@@ -171,6 +194,35 @@ def run(playwright: Playwright) -> None:
     date_number = next_week_date.day
     weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
     weekday = weekdays[next_week_date.weekday()]
+
+    #       ############################### AQUARIUM ANIMATION START ###############################
+    def run_ascii_aquarium_until_1157():
+        def run_ascii_aquarium():
+            return subprocess.Popen(['asciiquarium'])  # Assuming asciiquarium is in the PATH
+
+        def check_time(beijing, aquarium_proc):
+            while True:
+                now = datetime.now(beijing)
+                if now.hour == 11 and now.minute >= 57:
+                    aquarium_proc.terminate()
+                    aquarium_proc.wait()
+                    clear_screen()
+                    break
+                time.sleep(60)  # Check the time every minute
+
+        def clear_screen():
+            os.system('cls' if os.name == 'nt' else 'clear')
+
+        beijing = pytz.timezone('Asia/Shanghai')
+
+        aquarium_proc = run_ascii_aquarium()
+        time_check_thread = threading.Thread(target=check_time, args=(beijing, aquarium_proc))
+        time_check_thread.start()
+        time_check_thread.join()
+
+    run_ascii_aquarium_until_1157()
+    clear_screen()
+    #           ############################### AQUARIUM ANIMATION END ###############################
 
     # WAITING APPROACH 1
 
@@ -249,7 +301,7 @@ def run(playwright: Playwright) -> None:
 
     # Timeslot selection
     if chosen_timeslot == '7':
-        page1.locator(".inner-seat > div").first.click()
+        page1.locator("div:nth-child(4) > .inner-seat > div > img").first.click()
     else:
         page1.locator(timeslots[int(chosen_timeslot)]).click()
 
@@ -265,7 +317,7 @@ def run(playwright: Playwright) -> None:
         Fore.GREEN + f"\n\033[1mBooking completed at {datetime.now(beijing)} in {latency_part2_report_end:.2f} ms!\033[0m" + Style.RESET_ALL)
     page1.get_by_role("button", name="立即支付").click()
     page1.get_by_role("button", name="确 定").click()
-    page1.get_by_role("button", name="yes").click()
+    page1.get_by_role("button", name="yes").click(timeout=900000)  # Increased timeout
 
     # Function to wait for Enter press
     def wait_for_enter():

@@ -16,6 +16,8 @@ from pytz import timezone
 
 init()
 
+chosen_timeout = 200
+
 timeslots = {8: "div:nth-child(3) > .seat > .inner-seat > div",
              9: "div:nth-child(4) > .seat > .inner-seat > div",
              10: "div:nth-child(5) > .seat > .inner-seat > div",
@@ -85,7 +87,7 @@ def run(playwright: Playwright) -> None:
             "you're booking for next Monday.\n"
             "Otherwise ur lazy ass can just do it yourself without the script. \n"
             "If you get an error message, send it together with hongbao to:"
-            " \033[1m\033[94m Wechat ID: kasyan98\033[0m\n\n"
+            " \033[1m\033[94m Wechat ID: kasyan98\033[0m GitHub: https://github.com/kasyan1337\n\n"
             "Enjoy xoxo\n")
 
         print(f"You are booking the tennis court for \033[43m{future_date_formatted}\033[0m")
@@ -260,7 +262,7 @@ def run(playwright: Playwright) -> None:
         page1.reload()
         try:
             # Wait for the element using wait_for_selector
-            page1.wait_for_selector(f"text=月{date_number:02d}日 ({weekday})", timeout=500)
+            page1.wait_for_selector(f"text=月{date_number:02d}日 ({weekday})", timeout=chosen_timeout)
             page1.get_by_role("tab", name=f"月{date_number:02d}日 ({weekday})").click()
             print("\nSuccessfully accessed the booking page!")
             element_clicked = True
@@ -291,79 +293,16 @@ def run(playwright: Playwright) -> None:
     #       ############################### WORKS, DO NOT TOUCH THIS ###############################
 
     # Timeslot selection
-    # if chosen_timeslot == '7':
-    #     page1.locator(".inner-seat > div").first.click()
-    # else:
-    #     page1.locator(timeslots[int(chosen_timeslot)]).click()
-    #
-    # page1.get_by_role("button", name="立即下单").click()
-    # page1.locator("label span").nth(1).click()
-    # page1.get_by_role("button", name="提交订单").click()  # As fast as possible until here
+    if chosen_timeslot == '7':
+        page1.locator(".inner-seat > div").first.click()
+    else:
+        page1.locator(timeslots[int(chosen_timeslot)]).click()
+
+    page1.get_by_role("button", name="立即下单").click()
+    page1.locator("label span").nth(1).click()
+    page1.get_by_role("button", name="提交订单").click()  # As fast as possible until here
 
     # Here add alternative booking dates if error
-
-    # edit the code starting from here, so it would work
-
-    def attempt_booking(page1, timeslot):
-        success = False
-        try:
-            # Attempt to click on the timeslot
-            page1.locator(timeslots[timeslot]).click()
-            page1.get_by_role("button", name="立即下单").click()
-            page1.locator("label span").nth(1).click()
-            page1.get_by_role("button", name="提交订单").click()
-
-            # Wait for either a success message or an error message
-            try:
-                # Adjust the selector based on the actual success message
-                page1.wait_for_selector("text=Booking successful", timeout=2000) # toto nebude existovat, tuto zmenit na nieco realne
-                success = True
-                print(f"Successfully booked timeslot {timeslot}.")
-            except TimeoutError:
-                # If the success message doesn't appear within the timeout, check for error messages
-                if page1.is_visible("text=Error message related to booking failure"): # toto tiez nebude nikdy wtf??
-                    print(f"Failed to book for timeslot {timeslot}, due to an error message.")
-                else:
-                    # If there's no error message, the booking might have been successful but without confirmation
-                    print(f"Booking status for timeslot {timeslot} is unclear.")
-                    # Consider adding logic here to verify booking status, such as checking the booking list
-
-        except Exception as e:
-            print(f"An exception occurred while trying to book timeslot {timeslot}: {e}")
-            success = False
-
-        return success
-
-    def find_alternative_timeslot(chosen_timeslot, direction='both', step=1, limit=2):
-        # Initialize adjustments to an empty list to ensure it is always defined
-        adjustments = []
-
-        # Generates alternative timeslots within a given range and direction
-        if direction == 'both':
-            adjustments = [i for j in range(1, limit + 1) for i in (j, -j)]
-        elif direction == 'before':
-            adjustments = [-j for j in range(1, limit + 1)]
-        elif direction == 'after':
-            adjustments = [j for j in range(1, limit + 1)]
-
-        for adjustment in adjustments:
-            alternative = chosen_timeslot + adjustment
-            if 8 <= alternative <= 21:  # Assuming booking times are between 8 and 21 hours
-                yield alternative
-
-    chosen_timeslot_int = int(chosen_timeslot)
-    if not attempt_booking(page1, chosen_timeslot_int):
-        print("Attempting to book an alternative timeslot...")
-        for alternative_timeslot in find_alternative_timeslot(chosen_timeslot_int):
-            if attempt_booking(page1, alternative_timeslot):
-                print(f"Successfully booked an alternative timeslot: {alternative_timeslot}")
-                break
-        else:
-            print("Failed to book any alternative timeslot.")
-    else:
-        print("No need to book an alternative timeslot. Preferred timeslot was successfully booked.")
-
-    # edit the code up to here, so it would work
 
     latency_part2_end = time.time()
     latency_part2_report_end = latency_part2_end - latency_part2_start
