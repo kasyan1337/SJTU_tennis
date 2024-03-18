@@ -1,6 +1,0 @@
-test ci uz bol niekto predtym (test for dynamic in gpt) - potom alternative timeslot
-
-latency in log
-
-minhang cely dorobit, rozbit to vsetko na male funkcie
-
