@@ -15,7 +15,6 @@ from pytz import timezone
 init()
 
 chosen_timeout = 200
-beijing = timezone('Asia/Shanghai')
 
 #       ############################### UPDATER ###############################
 import requests
@@ -69,6 +68,8 @@ timeslots = {8: "div:nth-child(3) > div:nth-child(4) > .inner-seat > div > img",
              19: "div:nth-child(14) > div:nth-child(4) > .inner-seat > div > img",
              20: "div:nth-child(15) > div:nth-child(4) > .inner-seat > div > img",
              21: "div:nth-child(16) > div:nth-child(4) > .inner-seat > div > img"}
+
+beijing = timezone('Asia/Shanghai')
 
 def run(playwright: Playwright) -> None:
     """
