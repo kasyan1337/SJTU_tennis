@@ -36,7 +36,7 @@ def update_file_from_github(file_name):
         # Write the fetched content to the local file, overwriting it
         with open(file_name, 'w', encoding='utf-8') as file:
             file.write(response.text)
-        print(f"{file_name} has been updated to the latest version.")
+        print(f"File {file_name} is up to date.")
     except requests.RequestException as e:
         print(f"Failed to update {file_name}: {e}")
 
