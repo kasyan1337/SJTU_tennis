@@ -15,7 +15,6 @@ from pytz import timezone
 init()
 
 chosen_timeout = 200
-beijing = timezone('Asia/Shanghai')
 
 #       ############################### UPDATER ###############################
 import requests
@@ -70,21 +69,11 @@ timeslots = {8: "div:nth-child(3) > div:nth-child(4) > .inner-seat > div > img",
              20: "div:nth-child(15) > div:nth-child(4) > .inner-seat > div > img",
              21: "div:nth-child(16) > div:nth-child(4) > .inner-seat > div > img"}
 
+beijing = timezone('Asia/Shanghai')
+
 def run(playwright: Playwright) -> None:
-    """
-    This is a script that books a badminton court in SJTU Xuhui campus.
-    Script navigates you to the booking page, then waits for 12:00:01(Beijing time), for the booking to open,
-     then proceeds.
-    Script supports booking only one week ahead, meaning if today is Monday 11:00AM, you're booking for next Monday.
-    Otherwise, ur lazy ass can just do it on ur own without the script.
-    Script is going to need x user inputs, if u accidentally make a mistake in any of them, close the whole thing
-    and rerun the script.
-    If you get an error message, send it together with hongbao to: WeChat ID: kasyan98
-    Enjoy xoxo
-    """
 
     # if past 12:15
-
     def clear_screen():
         os.system('cls' if os.name == 'nt' else 'clear')
 
