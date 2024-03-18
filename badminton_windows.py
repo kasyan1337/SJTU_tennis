@@ -16,7 +16,7 @@ init()
 
 chosen_timeout = 200
 
-# ### UPDATER ###
+#       ############################### UPDATER ###############################
 import requests
 
 
@@ -41,12 +41,10 @@ def update_file_from_github(file_name):
     except requests.RequestException as e:
         print(f"Failed to update {file_name}: {e}")
 
-
-# Example usage:
 file_name = "badminton_windows.py"
 update_file_from_github(file_name)
 
-# ### UPDATER ###
+#       ############################### UPDATER ###############################
 
 # First court
 # page1.locator(".inner-seat > div > img").first.click()
