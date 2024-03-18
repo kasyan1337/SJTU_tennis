@@ -71,7 +71,7 @@ def run(playwright: Playwright) -> None:
             "you're booking for next Monday.\n"
             "Otherwise ur lazy ass can just do it yourself without the script. \n"
             "If you get an error message, send it together with hongbao to:"
-            " \033[1m\033[94m Wechat ID: kasyan98\033[0m\n Follow me on GitHub: https://github.com/kasyan1337\n\n"
+            " \033[1m\033[94m Wechat ID: kasyan98\033[0m and follow me on GitHub: https://github.com/kasyan1337\n\n"
             "Enjoy xoxo\n")
 
         print(f"You are booking the tennis court for \033[43m{future_date_formatted}\033[0m")

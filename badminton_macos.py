@@ -95,7 +95,7 @@ def run(playwright: Playwright) -> None:
             "you're booking for next Monday.\n"
             "Otherwise ur lazy ass can just do it yourself without the script. \n"
             "If you get an error message, send it together with hongbao to:"
-            " \033[1m\033[94m Wechat ID: kasyan98\033[0m\n Follow me on GitHub: https://github.com/kasyan1337\n\n"
+            " \033[1m\033[94m Wechat ID: kasyan98\033[0m and follow me on GitHub: https://github.com/kasyan1337\n\n"
             "Enjoy xoxo\n\n"
         )
 
@@ -269,6 +269,7 @@ def run(playwright: Playwright) -> None:
         page1.reload()
         try:
             # Wait for the element using wait_for_selector
+            page1.get_by_role("tab", name="羽毛球").click() # maybe try without next time
             page1.wait_for_selector(f"text=月{date_number:02d}日 ({weekday})", timeout=chosen_timeout)
             page1.get_by_role("tab", name=f"月{date_number:02d}日 ({weekday})").click()
             print("\nSuccessfully accessed the booking page!")
@@ -276,6 +277,7 @@ def run(playwright: Playwright) -> None:
         except TimeoutError:
             # If wait_for_selector fails, check visibility
             if page1.is_visible(f"text=月{date_number:02d}日 ({weekday})"):
+                page1.get_by_role("tab", name="羽毛球").click()  # maybe try without next time
                 page1.get_by_role("tab", name=f"月{date_number:02d}日 ({weekday})").click()
                 print("\nSuccessfully clicked the booking tab!")
                 element_clicked = True
@@ -303,6 +305,7 @@ def run(playwright: Playwright) -> None:
     if chosen_timeslot == '7':
         page1.locator("div:nth-child(4) > .inner-seat > div > img").first.click()
     else:
+        page1.get_by_role("tab", name="羽毛球").click()  # maybe try without next time
         page1.locator(timeslots[int(chosen_timeslot)]).click()
 
     page1.get_by_role("button", name="立即下单").click()
