@@ -17,9 +17,11 @@ init()
 
 chosen_timeout = 200
 
-
-# ### UPDATER ###
+#            ############################### UPDATER ###############################
 import requests
+
+
+# I am up to date
 
 def update_file_from_github(file_name):
     """
@@ -42,13 +44,11 @@ def update_file_from_github(file_name):
     except requests.RequestException as e:
         print(f"Failed to update {file_name}: {e}")
 
-# Example usage:
+
 file_name = "tennis_macos.py"
 update_file_from_github(file_name)
 
-
-# ### UPDATER ###
-
+#            ############################### UPDATER ###############################
 
 timeslots = {8: "div:nth-child(3) > .seat > .inner-seat > div",
              9: "div:nth-child(4) > .seat > .inner-seat > div",

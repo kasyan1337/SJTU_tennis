@@ -16,6 +16,38 @@ init()
 
 chosen_timeout = 200
 
+# ### UPDATER ###
+import requests
+
+
+def update_file_from_github(file_name):
+    """
+    Automatically updates the specified file by downloading its latest version from GitHub.
+    :param file_name: Name of the file to update (assuming it's in the root of the repository).
+    """
+    # GitHub raw content base URL
+    base_url = "https://raw.githubusercontent.com/kasyan1337/SJTU_tennis/master/"
+    url = f"{base_url}{file_name}"
+
+    try:
+        # Fetch the file content from GitHub
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+
+        # Write the fetched content to the local file, overwriting it
+        with open(file_name, 'w', encoding='utf-8') as file:
+            file.write(response.text)
+        print(f"{file_name} has been updated to the latest version.")
+    except requests.RequestException as e:
+        print(f"Failed to update {file_name}: {e}")
+
+
+# Example usage:
+file_name = "badminton_windows.py"
+update_file_from_github(file_name)
+
+# ### UPDATER ###
+
 # First court
 # page1.locator(".inner-seat > div > img").first.click()
 # page1.locator("div:nth-child(3) > div > .inner-seat > div > img").first.click()
