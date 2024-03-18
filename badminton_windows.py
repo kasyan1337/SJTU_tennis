@@ -15,6 +15,7 @@ from pytz import timezone
 init()
 
 chosen_timeout = 200
+beijing = timezone('Asia/Shanghai')
 
 #       ############################### UPDATER ###############################
 import requests
@@ -37,7 +38,7 @@ def update_file_from_github(file_name):
         # Write the fetched content to the local file, overwriting it
         with open(file_name, 'w', encoding='utf-8') as file:
             file.write(response.text)
-        print(f"{file_name} has been updated to the latest version.")
+        print(f"File {file_name} is up to date.")
     except requests.RequestException as e:
         print(f"Failed to update {file_name}: {e}")
 
@@ -68,9 +69,6 @@ timeslots = {8: "div:nth-child(3) > div:nth-child(4) > .inner-seat > div > img",
              19: "div:nth-child(14) > div:nth-child(4) > .inner-seat > div > img",
              20: "div:nth-child(15) > div:nth-child(4) > .inner-seat > div > img",
              21: "div:nth-child(16) > div:nth-child(4) > .inner-seat > div > img"}
-
-beijing = timezone('Asia/Shanghai')
-
 
 def run(playwright: Playwright) -> None:
     """
