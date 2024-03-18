@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import getpass
+import os
 import re
 import threading
 import time
@@ -13,27 +14,37 @@ from pytz import timezone
 
 init()
 
-timeslots = {8: "div:nth-child(3) > .seat > .inner-seat > div",
-             9: "div:nth-child(4) > .seat > .inner-seat > div",
-             10: "div:nth-child(5) > .seat > .inner-seat > div",
-             11: "div:nth-child(6) > .seat > .inner-seat > div",
-             12: "div:nth-child(7) > .seat > .inner-seat > div",
-             13: "div:nth-child(8) > .seat > .inner-seat > div",
-             14: "div:nth-child(9) > .seat > .inner-seat > div",
-             15: "div:nth-child(10) > .seat > .inner-seat > div",
-             16: "div:nth-child(11) > .seat > .inner-seat > div",
-             17: "div:nth-child(12) > .seat > .inner-seat > div",
-             18: "div:nth-child(13) > .seat > .inner-seat > div",
-             19: "div:nth-child(14) > .seat > .inner-seat > div",
-             20: "div:nth-child(15) > .seat > .inner-seat > div",
-             21: "div:nth-child(16) > .seat > .inner-seat > div"}
+chosen_timeout = 200
+
+# First court
+# page1.locator(".inner-seat > div > img").first.click()
+# page1.locator("div:nth-child(3) > div > .inner-seat > div > img").first.click()
+# page1.locator("div:nth-child(16) > div > .inner-seat > div > img").first.click()
+
+# Court 4
+# page1.locator("div:nth-child(4) > .inner-seat > div > img").first.click()  # 7AM
+
+timeslots = {8: "div:nth-child(3) > div:nth-child(4) > .inner-seat > div > img",
+             9: "div:nth-child(4) > div:nth-child(4) > .inner-seat > div > img",
+             10: "div:nth-child(5) > div:nth-child(4) > .inner-seat > div > img",
+             11: "div:nth-child(6) > div:nth-child(4) > .inner-seat > div > img",
+             12: "div:nth-child(7) > div:nth-child(4) > .inner-seat > div > img",
+             13: "div:nth-child(8) > div:nth-child(4) > .inner-seat > div > img",
+             14: "div:nth-child(9) > div:nth-child(4) > .inner-seat > div > img",
+             15: "div:nth-child(10) > div:nth-child(4) > .inner-seat > div > img",
+             16: "div:nth-child(11) > div:nth-child(4) > .inner-seat > div > img",
+             17: "div:nth-child(12) > div:nth-child(4) > .inner-seat > div > img",
+             18: "div:nth-child(13) > div:nth-child(4) > .inner-seat > div > img",
+             19: "div:nth-child(14) > div:nth-child(4) > .inner-seat > div > img",
+             20: "div:nth-child(15) > div:nth-child(4) > .inner-seat > div > img",
+             21: "div:nth-child(16) > div:nth-child(4) > .inner-seat > div > img"}
 
 beijing = timezone('Asia/Shanghai')
 
 
 def run(playwright: Playwright) -> None:
     """
-    This is a script that books a tennis court in SJTU Xuhui campus.
+    This is a script that books a badminton court in SJTU Xuhui campus.
     Script navigates you to the booking page, then waits for 12:00:01(Beijing time), for the booking to open,
      then proceeds.
     Script supports booking only one week ahead, meaning if today is Monday 11:00AM, you're booking for next Monday.
@@ -43,6 +54,11 @@ def run(playwright: Playwright) -> None:
     If you get an error message, send it together with hongbao to: WeChat ID: kasyan98
     Enjoy xoxo
     """
+
+    # if past 12:15
+
+    def clear_screen():
+        os.system('cls' if os.name == 'nt' else 'clear')
 
     current_datetime = datetime.now(beijing)
     cutoff_time = current_datetime.replace(hour=12, minute=15, second=0, microsecond=0)
@@ -62,17 +78,17 @@ def run(playwright: Playwright) -> None:
         # Use the formatted date in the print statement
 
         print(
-            "THIS IS A SCRIPT THAT BOOKS A TENNIS COURT ON SJTU XUHUI CAMPUS!\n\n"
+            "THIS IS A SCRIPT THAT BOOKS A BADMINTON COURT ON SJTU XUHUI CAMPUS!\n\n"
             "The script navigates you to the booking page, then waits until 12:00:01(Beijing time) for the booking to"
             " open, then proceeds.\n"
             "The script supports booking\033[1m only one week ahead\033[0m, meaning if today is Monday 11:00AM, "
             "you're booking for next Monday.\n"
             "Otherwise ur lazy ass can just do it yourself without the script. \n"
             "If you get an error message, send it together with hongbao to:"
-            " \033[1m\033[94m Wechat ID: kasyan98\033[0m\n\n"
+            " \033[1m\033[94m Wechat ID: kasyan98\033[0m and follow me on GitHub: https://github.com/kasyan1337\n\n"
             "Enjoy xoxo\n")
 
-        print(f"You are booking the tennis court for \033[43m{future_date_formatted}\033[0m")
+        print(f"You are booking the badminton court for \033[43m{future_date_formatted}\033[0m")
 
     # script start
 
@@ -129,35 +145,32 @@ def run(playwright: Playwright) -> None:
             print(Fore.GREEN + "Login successful, proceeding..." + Style.RESET_ALL)
             break
 
-    # run_cmatrix_for_seconds(3)
-    # clear_screen()
-
     page.get_by_text("Service", exact=True).click()
     page.locator("div").filter(has_text=re.compile(r"^Sport$")).nth(1).click()
     with page.expect_popup() as page1_info:
         page.get_by_text("Sports Venue Booking 标签：暂无评分收藏").click()
     page1 = page1_info.value
     page1.get_by_placeholder("请输入场馆名称或活动类型名称").click()
-    page1.get_by_placeholder("请输入场馆名称或活动类型名称").fill("网球")
+    page1.get_by_placeholder("请输入场馆名称或活动类型名称").fill("羽毛球")
     page1.get_by_placeholder("请输入场馆名称或活动类型名称").press("Enter")
     time.sleep(1)
 
-    # page1.locator("li").filter(has_text="胡晓明网球场 地址：闵行校区 时间：07:00-22:").get_by_role("img").click() # Minhang
-    page1.locator("li").filter(has_text="徐汇校区网球场 地址：徐汇校区 时间：07:00-22:").get_by_role(
+    page1.locator("li").filter(has_text="徐汇校区体育馆 地址：徐汇校区 时间：09:00-22:").get_by_role(
         "img").click()  # Xuhui
+
     time.sleep(1)
     page1.locator("#loginSelection").get_by_role("button", name="校内人员登录").click()
     time.sleep(1)
     page1.get_by_placeholder("请输入场馆名称或活动类型名称").click()
     time.sleep(1)
-    page1.get_by_placeholder("请输入场馆名称或活动类型名称").fill("网球")
+    page1.get_by_placeholder("请输入场馆名称或活动类型名称").fill("羽毛球")
     time.sleep(1)
     page1.get_by_placeholder("请输入场馆名称或活动类型名称").press("Enter")
     time.sleep(1)
-    # page1.locator("li").filter(has_text="胡晓明网球场 地址：闵行校区 时间：07:00-22:").get_by_role("img").click() # Minhang
-    page1.locator("li").filter(has_text="徐汇校区网球场 地址：徐汇校区 时间：07:00-22:").get_by_role(
+    page1.locator("li").filter(has_text="徐汇校区体育馆 地址：徐汇校区 时间：09:00-22:").get_by_role(
         "img").click()  # Xuhui
     time.sleep(1)
+    page1.get_by_role("tab", name="羽毛球").click()
 
     latency_part1_end = time.time()
     latency_part1_report = latency_part1_end - latency_part1_start
@@ -215,13 +228,15 @@ def run(playwright: Playwright) -> None:
         page1.reload()
         try:
             # Wait for the element using wait_for_selector
-            page1.wait_for_selector(f"text=月{date_number:02d}日 ({weekday})", timeout=500)
+            page1.get_by_role("tab", name="羽毛球").click() # maybe try without next time
+            page1.wait_for_selector(f"text=月{date_number:02d}日 ({weekday})", timeout=chosen_timeout)
             page1.get_by_role("tab", name=f"月{date_number:02d}日 ({weekday})").click()
             print("\nSuccessfully accessed the booking page!")
             element_clicked = True
         except TimeoutError:
             # If wait_for_selector fails, check visibility
             if page1.is_visible(f"text=月{date_number:02d}日 ({weekday})"):
+                page1.get_by_role("tab", name="羽毛球").click() # maybe try without next time
                 page1.get_by_role("tab", name=f"月{date_number:02d}日 ({weekday})").click()
                 print("\nSuccessfully clicked the booking tab!")
                 element_clicked = True
@@ -247,8 +262,9 @@ def run(playwright: Playwright) -> None:
 
     # Timeslot selection
     if chosen_timeslot == '7':
-        page1.locator(".inner-seat > div").first.click()
+        page1.locator("div:nth-child(4) > .inner-seat > div > img").first.click()
     else:
+        page1.get_by_role("tab", name="羽毛球").click() # maybe try without next time
         page1.locator(timeslots[int(chosen_timeslot)]).click()
 
     page1.get_by_role("button", name="立即下单").click()
