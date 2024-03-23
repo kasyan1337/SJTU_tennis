@@ -1,8 +1,8 @@
 *.env
 todo.txt
-tennis_enhanced.py
+tennis_testing.py
 functions/notes.txt
-badminton_enhanced.py
+badminton_testing.py
 *.log
 booking_logs
 tests
