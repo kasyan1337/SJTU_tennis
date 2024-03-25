@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import getpass
+import logging
 import os
 import re
 import threading
@@ -15,6 +16,19 @@ from pytz import timezone
 init()
 
 chosen_timeout = 200
+
+# Configure logging
+log_directory = "booking_logs"
+log_filename = "badminton_windows_log.log"
+log_path = os.path.join(log_directory, log_filename)
+
+if not os.path.exists(log_directory):
+    os.makedirs(log_directory)
+
+logging.basicConfig(filename=log_path, level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s', filemode='a')
+
+logging.info(f"\nNew session started; timeout {chosen_timeout} ms.")
 
 #       ############################### UPDATER ###############################
 import requests
@@ -38,41 +52,86 @@ def update_file_from_github(file_name):
         with open(file_name, 'w', encoding='utf-8') as file:
             file.write(response.text)
         print(f"File {file_name} is up to date.")
+        logging.info(f"File {file_name} is up to date with the latest GitHub version.")
     except requests.RequestException as e:
         print(f"Failed to update {file_name}: {e}")
+        logging.error(f"Failed to update {file_name} from GitHub: {e}")
+
 
 file_name = "badminton_windows.py"
 update_file_from_github(file_name)
 
 #       ############################### UPDATER ###############################
 
-# First court
-# page1.locator(".inner-seat > div > img").first.click()
-# page1.locator("div:nth-child(3) > div > .inner-seat > div > img").first.click()
-# page1.locator("div:nth-child(16) > div > .inner-seat > div > img").first.click()
 
-# Court 4
-# page1.locator("div:nth-child(4) > .inner-seat > div > img").first.click()  # 7AM
+seven = []
 
-timeslots = {8: "div:nth-child(3) > div:nth-child(4) > .inner-seat > div > img",
-             9: "div:nth-child(4) > div:nth-child(4) > .inner-seat > div > img",
-             10: "div:nth-child(5) > div:nth-child(4) > .inner-seat > div > img",
-             11: "div:nth-child(6) > div:nth-child(4) > .inner-seat > div > img",
-             12: "div:nth-child(7) > div:nth-child(4) > .inner-seat > div > img",
-             13: "div:nth-child(8) > div:nth-child(4) > .inner-seat > div > img",
-             14: "div:nth-child(9) > div:nth-child(4) > .inner-seat > div > img",
-             15: "div:nth-child(10) > div:nth-child(4) > .inner-seat > div > img",
-             16: "div:nth-child(11) > div:nth-child(4) > .inner-seat > div > img",
-             17: "div:nth-child(12) > div:nth-child(4) > .inner-seat > div > img",
-             18: "div:nth-child(13) > div:nth-child(4) > .inner-seat > div > img",
-             19: "div:nth-child(14) > div:nth-child(4) > .inner-seat > div > img",
-             20: "div:nth-child(15) > div:nth-child(4) > .inner-seat > div > img",
-             21: "div:nth-child(16) > div:nth-child(4) > .inner-seat > div > img"}
+timeslots = {}
+
+timeslots_1 = {8: "div:nth-child(3) > div > .inner-seat > div > img",
+               9: "div:nth-child(3) > div > .inner-seat > div > img",
+               10: "div:nth-child(3) > div > .inner-seat > div > img",
+               11: "div:nth-child(3) > div > .inner-seat > div > img",
+               12: "div:nth-child(3) > div > .inner-seat > div > img",
+               13: "div:nth-child(3) > div > .inner-seat > div > img",
+               14: "div:nth-child(3) > div > .inner-seat > div > img",
+               15: "div:nth-child(3) > div > .inner-seat > div > img",
+               16: "div:nth-child(3) > div > .inner-seat > div > img",
+               17: "div:nth-child(3) > div > .inner-seat > div > img",
+               18: "div:nth-child(3) > div > .inner-seat > div > img",
+               19: "div:nth-child(3) > div > .inner-seat > div > img",
+               20: "div:nth-child(3) > div > .inner-seat > div > img",
+               21: "div:nth-child(3) > div > .inner-seat > div > img"}
+
+timeslots_2 = {8: "div:nth-child(3) > div:nth-child(2) > .inner-seat > div > img",
+               9: "div:nth-child(4) > div:nth-child(2) > .inner-seat > div > img",
+               10: "div:nth-child(5) > div:nth-child(2) > .inner-seat > div > img",
+               11: "div:nth-child(6) > div:nth-child(2) > .inner-seat > div > img",
+               12: "div:nth-child(7) > div:nth-child(2) > .inner-seat > div > img",
+               13: "div:nth-child(8) > div:nth-child(2) > .inner-seat > div > img",
+               14: "div:nth-child(9) > div:nth-child(2) > .inner-seat > div > img",
+               15: "div:nth-child(10) > div:nth-child(2) > .inner-seat > div > img",
+               16: "div:nth-child(11) > div:nth-child(2) > .inner-seat > div > img",
+               17: "div:nth-child(12) > div:nth-child(2) > .inner-seat > div > img",
+               18: "div:nth-child(13) > div:nth-child(2) > .inner-seat > div > img",
+               19: "div:nth-child(14) > div:nth-child(2) > .inner-seat > div > img",
+               20: "div:nth-child(15) > div:nth-child(2) > .inner-seat > div > img",
+               21: "div:nth-child(16) > div:nth-child(2) > .inner-seat > div > img"}
+
+timeslots_3 = {8: "div:nth-child(3) > div:nth-child(3) > .inner-seat > div > img",
+               9: "div:nth-child(4) > div:nth-child(3) > .inner-seat > div > img",
+               10: "div:nth-child(5) > div:nth-child(3) > .inner-seat > div > img",
+               11: "div:nth-child(6) > div:nth-child(3) > .inner-seat > div > img",
+               12: "div:nth-child(7) > div:nth-child(3) > .inner-seat > div > img",
+               13: "div:nth-child(8) > div:nth-child(3) > .inner-seat > div > img",
+               14: "div:nth-child(9) > div:nth-child(3) > .inner-seat > div > img",
+               15: "div:nth-child(10) > div:nth-child(3) > .inner-seat > div > img",
+               16: "div:nth-child(11) > div:nth-child(3) > .inner-seat > div > img",
+               17: "div:nth-child(12) > div:nth-child(3) > .inner-seat > div > img",
+               18: "div:nth-child(13) > div:nth-child(3) > .inner-seat > div > img",
+               19: "div:nth-child(14) > div:nth-child(3) > .inner-seat > div > img",
+               20: "div:nth-child(15) > div:nth-child(3) > .inner-seat > div > img",
+               21: "div:nth-child(16) > div:nth-child(3) > .inner-seat > div > img"}
+
+timeslots_4 = {8: "div:nth-child(3) > div:nth-child(4) > .inner-seat > div > img",
+               9: "div:nth-child(4) > div:nth-child(4) > .inner-seat > div > img",
+               10: "div:nth-child(5) > div:nth-child(4) > .inner-seat > div > img",
+               11: "div:nth-child(6) > div:nth-child(4) > .inner-seat > div > img",
+               12: "div:nth-child(7) > div:nth-child(4) > .inner-seat > div > img",
+               13: "div:nth-child(8) > div:nth-child(4) > .inner-seat > div > img",
+               14: "div:nth-child(9) > div:nth-child(4) > .inner-seat > div > img",
+               15: "div:nth-child(10) > div:nth-child(4) > .inner-seat > div > img",
+               16: "div:nth-child(11) > div:nth-child(4) > .inner-seat > div > img",
+               17: "div:nth-child(12) > div:nth-child(4) > .inner-seat > div > img",
+               18: "div:nth-child(13) > div:nth-child(4) > .inner-seat > div > img",
+               19: "div:nth-child(14) > div:nth-child(4) > .inner-seat > div > img",
+               20: "div:nth-child(15) > div:nth-child(4) > .inner-seat > div > img",
+               21: "div:nth-child(16) > div:nth-child(4) > .inner-seat > div > img"}
 
 beijing = timezone('Asia/Shanghai')
 
-def run(playwright: Playwright) -> None:
 
+def run(playwright: Playwright) -> None:
     # if past 12:15
     def clear_screen():
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -115,6 +174,34 @@ def run(playwright: Playwright) -> None:
     page.goto(
         "https://my.sjtu.edu.cn/ui/me")
 
+    chosen_court = input('\033[1mPlease enter your preferred court number(format: "1,2,3,4"):\033[0m')
+    # choosing the court
+    while True:
+        if chosen_court.isdigit():
+            # Convert to integer
+            chosen_court_int = int(chosen_court)
+            if chosen_court_int in [1, 2, 3, 4]:
+                if chosen_court_int == 1:
+                    timeslots = timeslots_1
+                    seven.append(".inner-seat > div > img")
+                elif chosen_court_int == 2:
+                    timeslots = timeslots_2
+                    seven.append("div:nth-child(2) > .inner-seat > div > img")
+                elif chosen_court_int == 3:
+                    timeslots = timeslots_3
+                    seven.append("div:nth-child(3) > .inner-seat > div > img")
+                elif chosen_court_int == 4:
+                    timeslots = timeslots_4
+                    seven.append("div:nth-child(4) > .inner-seat > div > img")
+                break
+            else:
+                print(Fore.RED + "The court is not available." + Style.RESET_ALL)
+        else:
+            print(Fore.RED + "Input is not a valid number." + Style.RESET_ALL)
+        # Prompt again if not valid or not available
+        chosen_court = input('\033[1mPlease enter your preferred court number(format: "1,2,3,4"):\033[0m'
+                             'Input has to be a number from the available courts:\n')
+
     chosen_timeslot = input('\033[1mPlease enter your desired time slot(format: "7,8,9,10...18,19,20,21"):\033[0m')
     # timeslot format test
     while True:
@@ -123,7 +210,7 @@ def run(playwright: Playwright) -> None:
             # Convert to integer
             chosen_timeslot_int = int(chosen_timeslot)
             # Check if the integer is in the timeslots keys
-            if chosen_timeslot_int in timeslots:
+            if 7 <= chosen_timeslot_int <= 21:
                 break  # Exit the loop if valid timeslot
             else:
                 print(Fore.RED + "The timeslot is not available." + Style.RESET_ALL)
@@ -142,6 +229,10 @@ def run(playwright: Playwright) -> None:
         account_input = input("\033[1mPlease enter your username: \033[0m")
         password_input = getpass.getpass("\033[1mPlease enter your password: \033[0m")
         captcha_input = input("\033[1mPlease enter the captcha: \033[0m")
+
+        # log
+        logging.info(f"{account_input} selected court number: {chosen_court_int}")
+        logging.info(f"{account_input} selected timeslot: {chosen_timeslot_int}")
 
         # Fill in the login form
         page.get_by_placeholder("Account").click()
@@ -191,7 +282,9 @@ def run(playwright: Playwright) -> None:
 
     latency_part1_end = time.time()
     latency_part1_report = latency_part1_end - latency_part1_start
-    print(f"Preparatory stage latency: {latency_part1_report:.2f} ms")
+    print(f"Preparatory stage latency: {latency_part1_report:.2f} seconds")
+    logging.info(f"Preparatory stage latency: {latency_part1_report:.2f} seconds")
+
     #            ############################### PREPARE TIMES ###############################
 
     current_date = datetime.now(beijing)
@@ -243,9 +336,10 @@ def run(playwright: Playwright) -> None:
     element_clicked = False
     while not element_clicked:
         page1.reload()
+        page1.get_by_role("tab", name="羽毛球").click()  # MOVED HERE
         try:
             # Wait for the element using wait_for_selector
-            page1.get_by_role("tab", name="羽毛球").click() # maybe try without next time
+            # page1.get_by_role("tab", name="羽毛球").click()  # maybe try without next time
             page1.wait_for_selector(f"text=月{date_number:02d}日 ({weekday})", timeout=chosen_timeout)
             page1.get_by_role("tab", name=f"月{date_number:02d}日 ({weekday})").click()
             print("\nSuccessfully accessed the booking page!")
@@ -253,7 +347,7 @@ def run(playwright: Playwright) -> None:
         except TimeoutError:
             # If wait_for_selector fails, check visibility
             if page1.is_visible(f"text=月{date_number:02d}日 ({weekday})"):
-                page1.get_by_role("tab", name="羽毛球").click() # maybe try without next time
+                # page1.get_by_role("tab", name="羽毛球").click()  # maybe try without next time
                 page1.get_by_role("tab", name=f"月{date_number:02d}日 ({weekday})").click()
                 print("\nSuccessfully clicked the booking tab!")
                 element_clicked = True
@@ -262,7 +356,7 @@ def run(playwright: Playwright) -> None:
             latency_part2_mid = time.time()
             latency_part2_report_mid = latency_part2_mid - latency_part2_start
             print(Fore.GREEN +
-                  f"Booking page accessed at {datetime.now(beijing)} in {latency_part2_report_mid:.2f} ms"
+                  f"Booking page accessed at {datetime.now(beijing)} in {latency_part2_report_mid:.2f} seconds"
                   + Style.RESET_ALL)
 
         if not element_clicked:
@@ -279,9 +373,9 @@ def run(playwright: Playwright) -> None:
 
     # Timeslot selection
     if chosen_timeslot == '7':
-        page1.locator("div:nth-child(4) > .inner-seat > div > img").first.click()
+        page1.locator(seven[0]).first.click()
     else:
-        page1.get_by_role("tab", name="羽毛球").click() # maybe try without next time
+        page1.get_by_role("tab", name="羽毛球").click()  # maybe try without next time # duplicated here
         page1.locator(timeslots[int(chosen_timeslot)]).click()
 
     page1.get_by_role("button", name="立即下单").click()
@@ -293,7 +387,11 @@ def run(playwright: Playwright) -> None:
     latency_part2_end = time.time()
     latency_part2_report_end = latency_part2_end - latency_part2_start
     print(
-        Fore.GREEN + f"\n\033[1mBooking completed at {datetime.now(beijing)} in {latency_part2_report_end:.2f} ms!\033[0m" + Style.RESET_ALL)
+        Fore.GREEN + f"\n\033[1mBooking completed at {datetime.now(beijing)} in {latency_part2_report_end:.2f} seconds!\033[0m" + Style.RESET_ALL)
+    logging.info(f"Booking page accessed at {datetime.now(beijing)} in {latency_part2_report_mid:.2f} seconds")
+    logging.info(f"Booking completed at {datetime.now(beijing)} in {latency_part2_report_end:.2f} seconds!")
+    logging.error("Script terminated due to an error.")
+
     page1.get_by_role("button", name="立即支付").click()
     page1.get_by_role("button", name="确 定").click()
     page1.get_by_role("button", name="yes").click(timeout=900000)  # Increased timeout
@@ -325,5 +423,9 @@ def run(playwright: Playwright) -> None:
     browser.close()
 
 
-with sync_playwright() as playwright:
-    run(playwright)
+try:
+    with sync_playwright() as playwright:
+        run(playwright)
+        logging.info(f"Script successfully ended.")
+except Exception as e:
+    logging.exception(f"An unexpected error occurred: {e}")
