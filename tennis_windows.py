@@ -10,10 +10,25 @@ from colorama import init, Fore, Style
 from playwright.sync_api import Playwright, sync_playwright
 from playwright.sync_api import TimeoutError
 from pytz import timezone
+import logging
+import os
 
 init()
 
 chosen_timeout = 200
+
+# Configure logging
+log_directory = "booking_logs"
+log_filename = "tennis_windows_log.log"
+log_path = os.path.join(log_directory, log_filename)
+
+if not os.path.exists(log_directory):
+    os.makedirs(log_directory)
+
+logging.basicConfig(filename=log_path, level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s', filemode='a')
+
+logging.info(f"\nNew session started; timeout {chosen_timeout} ms.")
 
 #       ############################### UPDATER ###############################
 import requests
@@ -37,8 +52,10 @@ def update_file_from_github(file_name):
         with open(file_name, 'w', encoding='utf-8') as file:
             file.write(response.text)
         print(f"File {file_name} is up to date.")
+        logging.info(f"File {file_name} is up to date with the latest GitHub version.")
     except requests.RequestException as e:
         print(f"Failed to update {file_name}: {e}")
+        logging.error(f"Failed to update {file_name} from GitHub: {e}")
 
 
 file_name = "tennis_windows.py"
@@ -131,7 +148,7 @@ def run(playwright: Playwright) -> None:
         account_input = input("\033[1mPlease enter your username: \033[0m")
         password_input = getpass.getpass("\033[1mPlease enter your password: \033[0m")
         captcha_input = input("\033[1mPlease enter the captcha: \033[0m")
-
+        logging.info(f"{account_input} selected timeslot: {chosen_timeslot_int}")
         # Fill in the login form
         page.get_by_placeholder("Account").click()
         page.get_by_placeholder("Account").fill(account_input)
@@ -183,7 +200,8 @@ def run(playwright: Playwright) -> None:
 
     latency_part1_end = time.time()
     latency_part1_report = latency_part1_end - latency_part1_start
-    print(f"Preparatory stage latency: {latency_part1_report:.2f} ms")
+    print(f"Preparatory stage latency: {latency_part1_report:.2f} seconds")
+    logging.info(f"Preparatory stage latency: {latency_part1_report:.2f} seconds")
     #            ############################### PREPARE TIMES ###############################
 
     current_date = datetime.now(beijing)
@@ -252,7 +270,7 @@ def run(playwright: Playwright) -> None:
             latency_part2_mid = time.time()
             latency_part2_report_mid = latency_part2_mid - latency_part2_start
             print(Fore.GREEN +
-                  f"Booking page accessed at {datetime.now(beijing)} in {latency_part2_report_mid:.2f} ms"
+                  f"Booking page accessed at {datetime.now(beijing)} in {latency_part2_report_mid:.2f} seconds."
                   + Style.RESET_ALL)
 
         if not element_clicked:
@@ -282,7 +300,10 @@ def run(playwright: Playwright) -> None:
     latency_part2_end = time.time()
     latency_part2_report_end = latency_part2_end - latency_part2_start
     print(
-        Fore.GREEN + f"\n\033[1mBooking completed at {datetime.now(beijing)} in {latency_part2_report_end:.2f} ms!\033[0m" + Style.RESET_ALL)
+        Fore.GREEN + f"\n\033[1mBooking completed at {datetime.now(beijing)} in {latency_part2_report_end:.2f} seconds!\033[0m" + Style.RESET_ALL)
+    logging.info(f"Booking page accessed at {datetime.now(beijing)} in {latency_part2_report_mid:.2f} seconds")
+    logging.info(f"Booking completed at {datetime.now(beijing)} in {latency_part2_report_end:.2f} seconds!")
+    logging.error("Script terminated due to an error.")
     page1.get_by_role("button", name="立即支付").click()
     page1.get_by_role("button", name="确 定").click()
     page1.get_by_role("button", name="yes").click()
@@ -316,3 +337,10 @@ def run(playwright: Playwright) -> None:
 
 with sync_playwright() as playwright:
     run(playwright)
+
+try:
+    with sync_playwright() as playwright:
+        run(playwright)
+        logging.info(f"Script successfully ended.")
+except Exception as e:
+    logging.exception(f"An unexpected error occurred: {e}")
