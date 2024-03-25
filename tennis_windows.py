@@ -30,6 +30,7 @@ logging.basicConfig(filename=log_path, level=logging.INFO,
 
 logging.info(f"\n\nNew session started; timeout {chosen_timeout} ms.")
 
+
 #       ############################### UPDATER ###############################
 import requests
 

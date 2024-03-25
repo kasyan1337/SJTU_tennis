@@ -33,6 +33,7 @@ logging.info(f"\n\nNew session started; timeout {chosen_timeout} ms.")
 #       ############################### UPDATER ###############################
 import requests
 
+
 def update_file_from_github(file_name):
     """
     Automatically updates the specified file by downloading its latest version from GitHub.
