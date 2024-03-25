@@ -29,9 +29,10 @@ if not os.path.exists(log_directory):
 logging.basicConfig(filename=log_path, level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s', filemode='a')
 
-logging.info(f"\nNew session started; timeout {chosen_timeout} ms.")
+logging.info(f"\n\nNew session started; timeout {chosen_timeout} ms.")
 #       ############################### UPDATER ###############################
 import requests
+
 
 def update_file_from_github(file_name):
     """
