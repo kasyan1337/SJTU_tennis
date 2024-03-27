@@ -19,7 +19,8 @@ chosen_timeout = 200
 
 # Configure logging
 log_directory = "booking_logs"
-log_filename = "tennis_windows_log.log"
+script_name_without_extension = os.path.splitext(os.path.basename(__file__))[0]
+log_filename = f"{script_name_without_extension}_log.log"
 log_path = os.path.join(log_directory, log_filename)
 
 if not os.path.exists(log_directory):
