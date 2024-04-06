@@ -16,6 +16,7 @@ from pytz import timezone
 init()
 
 chosen_timeout = 200
+random_timeout = 0.5
 
 # Configure logging
 log_directory = "booking_logs"
@@ -30,7 +31,6 @@ logging.basicConfig(filename=log_path, level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s', filemode='a')
 
 logging.info(f"\n\nNew session started; timeout {chosen_timeout} ms.")
-
 
 #       ############################### UPDATER ###############################
 import requests
@@ -175,6 +175,7 @@ def run(playwright: Playwright) -> None:
     page = context.new_page()
     page.goto(
         "https://my.sjtu.edu.cn/ui/me")
+    logging.info(f"EXECUTED SUCCESSFULLY: Page accessed.")
 
     chosen_court = input('\033[1mPlease enter your preferred court number(format: "1,2,3,4"):\033[0m')
     # choosing the court
@@ -255,37 +256,59 @@ def run(playwright: Playwright) -> None:
             print(Fore.GREEN + "Login successful, proceeding..." + Style.RESET_ALL)
             break
 
+    logging.info(f"EXECUTED SUCCESSFULLY: Logged in")
+    time.sleep(random_timeout)
     page.get_by_text("Service", exact=True).click()
+    logging.info(f"EXECUTED SUCCESSFULLY: Service")
+    time.sleep(random_timeout)
     page.locator("div").filter(has_text=re.compile(r"^Sport$")).nth(1).click()
+    logging.info(f"EXECUTED SUCCESSFULLY: Clicked ^Sport$")
+    time.sleep(random_timeout)
     with page.expect_popup() as page1_info:
-        page.get_by_text("Sports Venue Booking标签：暂无评分 复制链接 收藏").click()
+        page.get_by_text("Sports Venue Booking 标签：暂无评分收藏").click()
     page1 = page1_info.value
+    logging.info(f"EXECUTED SUCCESSFULLY: Sports Venue Booking标签：暂无评分 复制链接 收藏")
+    time.sleep(random_timeout)
     page1.get_by_placeholder("请输入场馆名称或活动类型名称").click()
+    logging.info(f"EXECUTED SUCCESSFULLY: 请输入场馆名称或活动类型名称")
+    time.sleep(random_timeout)
     page1.get_by_placeholder("请输入场馆名称或活动类型名称").fill("羽毛球")
+    logging.info(f"EXECUTED SUCCESSFULLY: 羽毛球")
+    time.sleep(random_timeout)
     page1.get_by_placeholder("请输入场馆名称或活动类型名称").press("Enter")
-    time.sleep(1)
+    logging.info(f"EXECUTED SUCCESSFULLY: Enter")
+    time.sleep(random_timeout)
 
     page1.locator("li").filter(has_text="徐汇校区体育馆 地址：徐汇校区 时间：09:00-22:").get_by_role(
         "img").click()  # Xuhui
 
-    time.sleep(1)
+    time.sleep(random_timeout)
+    logging.info(f"EXECUTED SUCCESSFULLY: 徐汇校区体育馆 地址：徐汇校区 时间：09:00-22:")
     page1.locator("#loginSelection").get_by_role("button", name="校内人员登录").click()
-    time.sleep(1)
+    time.sleep(random_timeout)
+    logging.info(f"EXECUTED SUCCESSFULLY: 校内人员登录")
     page1.get_by_placeholder("请输入场馆名称或活动类型名称").click()
-    time.sleep(1)
+    time.sleep(random_timeout)
+    logging.info(f"EXECUTED SUCCESSFULLY: 请输入场馆名称或活动类型名称")
     page1.get_by_placeholder("请输入场馆名称或活动类型名称").fill("羽毛球")
-    time.sleep(1)
+    time.sleep(random_timeout)
+    logging.info(f"EXECUTED SUCCESSFULLY: 羽毛球")
     page1.get_by_placeholder("请输入场馆名称或活动类型名称").press("Enter")
-    time.sleep(1)
+    time.sleep(random_timeout)
+    logging.info(f"EXECUTED SUCCESSFULLY: Enter")
     page1.locator("li").filter(has_text="徐汇校区体育馆 地址：徐汇校区 时间：09:00-22:").get_by_role(
         "img").click()  # Xuhui
-    time.sleep(1)
+    time.sleep(random_timeout)
+    logging.info(f"EXECUTED SUCCESSFULLY: 徐汇校区网球场 地址：徐汇校区 时间：07:00-22:")
     page1.get_by_role("tab", name="羽毛球").click()
+    time.sleep(random_timeout)
+    logging.info(f"EXECUTED SUCCESSFULLY: TAB NAME: 羽毛球")
 
     latency_part1_end = time.time()
     latency_part1_report = latency_part1_end - latency_part1_start
     print(f"Preparatory stage latency: {latency_part1_report:.2f} seconds")
     logging.info(f"Preparatory stage latency: {latency_part1_report:.2f} seconds")
+    logging.info(f"PREPARATORY STAGE FINISHED; WAITING FOR 12:00")
 
     #            ############################### PREPARE TIMES ###############################
 
@@ -336,9 +359,13 @@ def run(playwright: Playwright) -> None:
     # After reaching the target time
     latency_part2_start = time.time()  # As fast as possible from here
     element_clicked = False
+    logging.info(f"EXECUTED SUCCESSFULLY: WAITED UNTIL 12:00")
+
     while not element_clicked:
         page1.reload()
         page1.get_by_role("tab", name="羽毛球").click()  # MOVED HERE
+        logging.info(f"EXECUTED SUCCESSFULLY: SWITCHED TO 羽毛球 TAB")
+
         try:
             # Wait for the element using wait_for_selector
             # page1.get_by_role("tab", name="羽毛球").click()  # maybe try without next time
@@ -376,13 +403,17 @@ def run(playwright: Playwright) -> None:
     # Timeslot selection
     if chosen_timeslot == '7':
         page1.locator(seven[0]).first.click()
+        logging.info(f"EXECUTED SUCCESSFULLY: TIMESLOT SELECTED")
     else:
-        page1.get_by_role("tab", name="羽毛球").click()  # maybe try without next time # duplicated here
         page1.locator(timeslots[int(chosen_timeslot)]).click()
+        logging.info(f"EXECUTED SUCCESSFULLY: TIMESLOT {timeslots[int(chosen_timeslot)]} SELECTED")
 
     page1.get_by_role("button", name="立即下单").click()
+    logging.info(f"EXECUTED SUCCESSFULLY: 立即下单")
     page1.locator("label span").nth(1).click()
+    logging.info(f"EXECUTED SUCCESSFULLY: label span")
     page1.get_by_role("button", name="提交订单").click()  # As fast as possible until here
+    logging.info(f"EXECUTED SUCCESSFULLY: 提交订单")
 
     # Here add alternative booking dates if error
 
@@ -395,8 +426,14 @@ def run(playwright: Playwright) -> None:
     logging.error("Script terminated due to an error.")
 
     page1.get_by_role("button", name="立即支付").click()
+    logging.info(f"EXECUTED SUCCESSFULLY: 立即支付")
+    time.sleep(random_timeout)
     page1.get_by_role("button", name="确 定").click()
+    logging.info(f"EXECUTED SUCCESSFULLY: 确 定")
+    time.sleep(random_timeout)
     page1.get_by_role("button", name="yes").click(timeout=900000)  # Increased timeout
+    logging.info(f"EXECUTED SUCCESSFULLY: yes")
+    time.sleep(random_timeout)
 
     # Function to wait for Enter press
     def wait_for_enter():
