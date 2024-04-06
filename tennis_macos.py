@@ -190,7 +190,7 @@ def run(playwright: Playwright) -> None:
     page.get_by_text("Service", exact=True).click()
     page.locator("div").filter(has_text=re.compile(r"^Sport$")).nth(1).click()
     with page.expect_popup() as page1_info:
-        page.get_by_text("Sports Venue Booking 标签：暂无评分收藏").click()
+        page.get_by_text("Sports Venue Booking标签：暂无评分 复制链接 收藏").click()
     page1 = page1_info.value
     page1.get_by_placeholder("请输入场馆名称或活动类型名称").click()
     page1.get_by_placeholder("请输入场馆名称或活动类型名称").fill("网球")
