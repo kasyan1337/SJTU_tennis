@@ -265,7 +265,7 @@ def run(playwright: Playwright) -> None:
     logging.info(f"EXECUTED SUCCESSFULLY: Clicked ^Sport$")
     time.sleep(random_timeout)
     with page.expect_popup() as page1_info:
-        page.get_by_text("Sports Venue Booking 标签：暂无评分收藏").click()
+        page.get_by_text("Sports Venue Booking标签：暂无评分 复制链接 收藏").click()
     page1 = page1_info.value
     logging.info(f"EXECUTED SUCCESSFULLY: Sports Venue Booking标签：暂无评分 复制链接 收藏")
     time.sleep(random_timeout)
@@ -387,6 +387,7 @@ def run(playwright: Playwright) -> None:
             print(Fore.GREEN +
                   f"Booking page accessed at {datetime.now(beijing)} in {latency_part2_report_mid:.2f} seconds"
                   + Style.RESET_ALL)
+            logging.info(f"Booking page accessed at {datetime.now(beijing)} in {latency_part2_report_mid:.2f} seconds")
 
         if not element_clicked:
             print(
@@ -421,7 +422,6 @@ def run(playwright: Playwright) -> None:
     latency_part2_report_end = latency_part2_end - latency_part2_start
     print(
         Fore.GREEN + f"\n\033[1mBooking completed at {datetime.now(beijing)} in {latency_part2_report_end:.2f} seconds!\033[0m" + Style.RESET_ALL)
-    logging.info(f"Booking page accessed at {datetime.now(beijing)} in {latency_part2_report_mid:.2f} seconds")
     logging.info(f"Booking completed at {datetime.now(beijing)} in {latency_part2_report_end:.2f} seconds!")
     logging.error("Script terminated due to an error.")
 

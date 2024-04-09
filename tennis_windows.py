@@ -297,6 +297,8 @@ def run(playwright: Playwright) -> None:
             print(Fore.GREEN +
                   f"Booking page accessed at {datetime.now(beijing)} in {latency_part2_report_mid:.2f} seconds."
                   + Style.RESET_ALL)
+            logging.info(f"Booking page accessed at {datetime.now(beijing)} in {latency_part2_report_mid:.2f} seconds")
+
 
         if not element_clicked:
             print(
@@ -331,7 +333,6 @@ def run(playwright: Playwright) -> None:
     latency_part2_report_end = latency_part2_end - latency_part2_start
     print(
         Fore.GREEN + f"\n\033[1mBooking completed at {datetime.now(beijing)} in {latency_part2_report_end:.2f} seconds!\033[0m" + Style.RESET_ALL)
-    logging.info(f"Booking page accessed at {datetime.now(beijing)} in {latency_part2_report_mid:.2f} seconds")
     logging.info(f"Booking completed at {datetime.now(beijing)} in {latency_part2_report_end:.2f} seconds!")
     logging.error("Script terminated due to an error.")
     page1.get_by_role("button", name="立即支付").click()
