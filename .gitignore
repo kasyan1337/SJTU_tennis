@@ -1,12 +1,13 @@
 *.env
-todo.txt
-tennis_testing.py
+testing_files/todo.txt
+testing_files/tennis_alt_timeslot.py
 functions/notes.txt
-badminton_testing.py
+testing_files/badminton_testing.py
 *.log
 booking_logs
 tests
 archive_methods
+testing_files
 
 # Created by .ignore support plugin (hsz.mobi)
 ### Diff template
