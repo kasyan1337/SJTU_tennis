@@ -15,8 +15,9 @@ from pytz import timezone
 
 init()
 
-chosen_timeout = 200
-random_timeout = 0.5
+chosen_timeout = 200  # Timeout for waiting for element to appear (booking page)
+random_timeout = 0.5  # Random timeout for waiting between actions
+timeout_booking_page = 0.1  # Timeout for waiting between actions on the booking page
 
 # Configure logging
 log_directory = "booking_logs"
@@ -409,12 +410,17 @@ def run(playwright: Playwright) -> None:
         page1.locator(timeslots[int(chosen_timeslot)]).click()
         logging.info(f"EXECUTED SUCCESSFULLY: TIMESLOT {timeslots[int(chosen_timeslot)]} SELECTED")
 
+    time.sleep(timeout_booking_page)
     page1.get_by_role("button", name="立即下单").click()
     logging.info(f"EXECUTED SUCCESSFULLY: 立即下单")
+    time.sleep(timeout_booking_page)
     page1.locator("label span").nth(1).click()
+    time.sleep(timeout_booking_page)
     logging.info(f"EXECUTED SUCCESSFULLY: label span")
+    time.sleep(timeout_booking_page)
     page1.get_by_role("button", name="提交订单").click()  # As fast as possible until here
     logging.info(f"EXECUTED SUCCESSFULLY: 提交订单")
+    time.sleep(timeout_booking_page)
 
     # Here add alternative booking dates if error
 
