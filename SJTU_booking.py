@@ -22,58 +22,9 @@ init()
 chosen_timeout = 200  # Timeout for waiting for element to appear (booking page)
 random_timeout = 0.5  # Random timeout for waiting between actions
 timeout_booking_page = 0.1  # Timeout for waiting between actions on the booking page
-time_restriction_hour = 20  # Hour after which the script will not run +15(12:15)
+
+time_restriction_hour = 12  # Hour after which the script will not run +15(12:15)
 updater = 1  # Update the script from GitHub (1 for ON)
-
-
-#       ############################### LOGGING ###############################
-def start_logs():
-    """
-    Start logging to a file in the 'booking_logs' directory.
-    """
-    log_directory = "booking_logs"
-    script_name_without_extension = os.path.splitext(os.path.basename(__file__))[0]
-    log_filename = f"{script_name_without_extension}_log.log"
-    log_path = os.path.join(log_directory, log_filename)
-
-    if not os.path.exists(log_directory):
-        os.makedirs(log_directory)
-
-    logging.basicConfig(filename=log_path, level=logging.INFO,
-                        format='%(asctime)s - %(levelname)s - %(message)s', filemode='a')
-
-    logging.info(f"\n\nNew session started with setup:\n"
-                 f"chosen_timeout {chosen_timeout} ms\n"
-                 f"random_timeout {random_timeout} s\n"
-                 f"timeout_booking_page {timeout_booking_page} s\n"
-                 f"time_restriction_hour {time_restriction_hour}\n"
-                 f"updater {updater}")
-
-
-#       ############################### UPDATER ###############################
-def update_file_from_github(file_name):
-    """
-    Automatically updates the specified file by downloading its latest version from GitHub.
-    :param file_name: Name of the file to update (assuming it's in the root of the repository).
-    """
-    # GitHub raw content base URL
-    base_url = "https://raw.githubusercontent.com/kasyan1337/SJTU_tennis/master/"
-    url = f"{base_url}{file_name}"
-
-    try:
-        # Fetch the file content from GitHub
-        response = requests.get(url)
-        response.raise_for_status()  # Raise an exception for HTTP errors
-
-        # Write the fetched content to the local file, overwriting it
-        with open(file_name, 'w', encoding='utf-8') as file:
-            file.write(response.text)
-        print(f"File {file_name} is up to date.")
-        logging.info(f"File {file_name} is up to date with the latest GitHub version.")
-    except requests.RequestException as e:
-        print(f"Failed to update {file_name}: {e}")
-        logging.error(f"Failed to update {file_name} from GitHub: {e}")
-
 
 #       ############################### DATABASE ###############################
 
@@ -160,6 +111,51 @@ beijing = timezone('Asia/Shanghai')
 
 
 #       ############################### CORE FUNCTIONS ###############################
+
+def start_logs():
+    """
+    Start logging to a file in the 'booking_logs' directory.
+    """
+    log_directory = "booking_logs"
+    script_name_without_extension = os.path.splitext(os.path.basename(__file__))[0]
+    log_filename = f"{script_name_without_extension}_log.log"
+    log_path = os.path.join(log_directory, log_filename)
+
+    if not os.path.exists(log_directory):
+        os.makedirs(log_directory)
+
+    logging.basicConfig(filename=log_path, level=logging.INFO,
+                        format='%(asctime)s - %(levelname)s - %(message)s', filemode='a')
+
+    logging.info(f"\n\nNew session started with setup:\n"
+                 f"chosen_timeout {chosen_timeout} ms\n"
+                 f"random_timeout {random_timeout} s\n"
+                 f"timeout_booking_page {timeout_booking_page} s\n"
+                 f"time_restriction_hour {time_restriction_hour}\n"
+                 f"updater {updater}")
+
+def update_file_from_github(file_name):
+    """
+    Automatically updates the specified file by downloading its latest version from GitHub.
+    :param file_name: Name of the file to update (assuming it's in the root of the repository).
+    """
+    # GitHub raw content base URL
+    base_url = "https://raw.githubusercontent.com/kasyan1337/SJTU_tennis/master/"
+    url = f"{base_url}{file_name}"
+
+    try:
+        # Fetch the file content from GitHub
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+
+        # Write the fetched content to the local file, overwriting it
+        with open(file_name, 'w', encoding='utf-8') as file:
+            file.write(response.text)
+        print(f"File {file_name} is up to date.")
+        logging.info(f"File {file_name} is up to date with the latest GitHub version.")
+    except requests.RequestException as e:
+        print(f"Failed to update {file_name}: {e}")
+        logging.error(f"Failed to update {file_name} from GitHub: {e}")
 
 def find_OS():
     """
@@ -326,7 +322,7 @@ def run_tennis(playwright: Playwright) -> None:
         # Animation prompt
         logging.info(f"OS: {find_OS()}")
         if find_OS() == 'MacOS':
-            animations = input("Would you like to see an animation while waiting? (Y/N): ")
+            animations = input("\033[1mWould you like to see animations while waiting? (Y/N): \033[0m")
             logging.info(f"Animations: {animations}")
 
         # Fill in the login form
@@ -660,7 +656,7 @@ def run_badminton(playwright: Playwright) -> None:
         # Animation prompt
         logging.info(f"OS: {find_OS()}")
         if find_OS() == 'MacOS':
-            animations = input("Would you like to see an animation while waiting? (Y/N): ")
+            animations = input("\033[1mWould you like to see animations while waiting? (Y/N): \033[0m")
             logging.info(f"Animations: {animations}")
 
         # log
