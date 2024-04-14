@@ -119,22 +119,29 @@ def start_logs():
     """
     log_directory = "booking_logs"
     script_name_without_extension = os.path.splitext(os.path.basename(__file__))[0]
+    script_path = __file__  # Gets the whole path of the current script
     log_filename = f"{script_name_without_extension}_log.log"
     log_path = os.path.join(log_directory, log_filename)
 
     if not os.path.exists(log_directory):
         os.makedirs(log_directory)
 
+    # Get the last modification time of the file
+    last_modified_timestamp = os.path.getmtime(script_path)
+    last_modified_time = datetime.fromtimestamp(last_modified_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+
+
     logging.basicConfig(filename=log_path, level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s', filemode='a')
 
-    logging.info(f"\n{'=' * 30}\nNew session started\n{'=' * 30}\n"
+    logging.info(f"\n\n\n{'=' * 30}\nNew session started at \n{datetime.now(beijing)}\n{'=' * 30}\n"
+                 f"Script last modified: {last_modified_time}\n"
                  f"Setup:\n"
                  f"chosen_timeout {chosen_timeout} ms\n"
                  f"random_timeout {random_timeout} s\n"
                  f"timeout_booking_page {timeout_booking_page} s\n"
                  f"time_restriction_hour {time_restriction_hour}\n"
-                 f"updater {updater}")
+                 f"updater {updater}\n{'=' * 30}\n\n")
 
 
 def update_file_from_github(file_name):
