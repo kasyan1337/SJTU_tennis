@@ -43,7 +43,7 @@ def update_file_from_github(file_name):
     :param file_name: Name of the file to update (assuming it's in the root of the repository).
     """
     # GitHub raw content base URL
-    base_url = "https://raw.githubusercontent.com/kasyan1337/SJTU_tennis/master/"
+    base_url = "https://raw.githubusercontent.com/kasyan1337/SJTU_tennis/master/files/"
     url = f"{base_url}{file_name}"
 
     try:
