@@ -108,6 +108,7 @@ timeslots_badminton_4 = {8: "div:nth-child(3) > div:nth-child(4) > .inner-seat >
                          21: "div:nth-child(16) > div:nth-child(4) > .inner-seat > div > img"}
 
 beijing = timezone('Asia/Shanghai')
+animations = None
 
 
 #       ############################### CORE FUNCTIONS ###############################
@@ -127,12 +128,14 @@ def start_logs():
     logging.basicConfig(filename=log_path, level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s', filemode='a')
 
-    logging.info(f"\n\nNew session started with setup:\n"
+    logging.info(f"\n{'=' * 30}\nNew session started\n{'=' * 30}\n"
+                 f"Setup:\n"
                  f"chosen_timeout {chosen_timeout} ms\n"
                  f"random_timeout {random_timeout} s\n"
                  f"timeout_booking_page {timeout_booking_page} s\n"
                  f"time_restriction_hour {time_restriction_hour}\n"
                  f"updater {updater}")
+
 
 def update_file_from_github(file_name):
     """
@@ -157,7 +160,8 @@ def update_file_from_github(file_name):
         print(f"Failed to update {file_name}: {e}")
         logging.error(f"Failed to update {file_name} from GitHub: {e}")
 
-def find_OS():
+
+def find_os():
     """
     Finds the operating system of the user for animation purposes.
     """
@@ -176,12 +180,15 @@ def find_OS():
 
 def run_cmatrix_for_seconds(seconds):
     """
-    Runs cmatrix for a specified number of seconds.
+    Runs cmatrix for a specified number of seconds. Checks if cmatrix is installed before running.
     """
-    cmatrix_proc = subprocess.Popen(['cmatrix'])
-    time.sleep(seconds)
-    cmatrix_proc.terminate()
-    cmatrix_proc.wait()
+    try:
+        cmatrix_proc = subprocess.Popen(['cmatrix'])  # Try to start cmatrix
+        time.sleep(seconds)  # Let it run for the specified number of seconds
+        cmatrix_proc.terminate()  # Terminate the process
+        cmatrix_proc.wait()  # Wait for process to terminate completely
+    except FileNotFoundError:
+        print("cmatrix not found. Please ensure it is installed and in the PATH.")
 
 
 def clear_screen():
@@ -191,34 +198,43 @@ def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 
-def run_ascii_aquarium_until_1157():
+def run_ascii_aquarium():
     """
-    Runs asciiquarium until 11:57AM.
+    Attempts to start the asciiquarium program and returns the process if successful.
+    Returns None if asciiquarium is not installed.
     """
+    try:
+        return subprocess.Popen(['asciiquarium'])  # Ensure asciiquarium is installed and in the PATH
+    except FileNotFoundError:
+        print("asciiquarium not found. Please ensure it is installed and in the PATH.")
+        return None
 
-    def run_ascii_aquarium():
-        """
-        Runs the asciiquarium program.
-        """
-        return subprocess.Popen(['asciiquarium'])  # Assuming asciiquarium is in the PATH
 
-    def check_time(beijing, aquarium_proc):
-        """
-        Checks the time every minute until 11:57AM.
-        """
-        while True:
-            now = datetime.now(beijing)
-            if now.hour == 11 and now.minute >= 57:
+def check_time_1157(beijing, aquarium_proc):
+    """
+    Monitors the time and terminates the asciiquarium process at 11:57 AM.
+    """
+    while True:
+        now = datetime.now(beijing)
+        if now.hour == 11 and now.minute >= 57:
+            if aquarium_proc:
                 aquarium_proc.terminate()
                 aquarium_proc.wait()
-                clear_screen()
-                break
-            time.sleep(60)  # Check the time every minute
+            clear_screen()
+            break
+        time.sleep(60)  # Check the time every minute
 
+
+def run_ascii_aquarium_until_1157():
+    """
+    Runs asciiquarium until 11:57 AM, then terminates it. Ensures that asciiquarium
+    is only running during the specified time window.
+    """
     aquarium_proc = run_ascii_aquarium()
-    time_check_thread = threading.Thread(target=check_time, args=(beijing, aquarium_proc))
-    time_check_thread.start()
-    time_check_thread.join()
+    if aquarium_proc is not None:
+        time_check_thread = threading.Thread(target=check_time_1157, args=(beijing, aquarium_proc))
+        time_check_thread.start()
+        time_check_thread.join()
 
 
 def tennis_or_badminton():
@@ -252,6 +268,7 @@ def tennis_or_badminton():
 
 
 def run_tennis(playwright: Playwright) -> None:
+    global animations
     current_datetime = datetime.now(beijing)
     cutoff_time = current_datetime.replace(hour=time_restriction_hour, minute=15, second=0, microsecond=0)
     # Check if the current time is past the cutoff time
@@ -320,8 +337,8 @@ def run_tennis(playwright: Playwright) -> None:
         captcha_input = input("\033[1mPlease enter the captcha: \033[0m")
         logging.info(f"{account_input} selected timeslot: {chosen_timeslot_int}")
         # Animation prompt
-        logging.info(f"OS: {find_OS()}")
-        if find_OS() == 'MacOS':
+        logging.info(f"OS: {find_os()}")
+        if find_os() == 'MacOS':
             animations = input("\033[1mWould you like to see animations while waiting? (Y/N): \033[0m")
             logging.info(f"Animations: {animations}")
 
@@ -334,7 +351,7 @@ def run_tennis(playwright: Playwright) -> None:
         page.get_by_placeholder("Captcha").fill(captcha_input)
         page.get_by_role("button", name="SIGN IN").click()
         # Cmatrix animation
-        if animations == 'Y' or animations == 'y' and find_OS() == 'MacOS':
+        if animations == 'Y' or animations == 'y' and find_os() == 'MacOS':
             run_cmatrix_for_seconds(3)
             clear_screen()
             logging.info(f"EXECUTED SUCCESSFULLY: cmatrix animation")
@@ -411,7 +428,7 @@ def run_tennis(playwright: Playwright) -> None:
     weekday = weekdays[next_week_date.weekday()]
 
     # Aquarium animation
-    if animations == 'Y' or animations == 'y' and find_OS() == 'MacOS':
+    if animations == 'Y' or animations == 'y' and find_os() == 'MacOS':
         run_ascii_aquarium_until_1157()
         clear_screen()
         logging.info(f"AQUARIUM ANIMATION FINISHED; WAITING FOR 12:00")
@@ -517,7 +534,8 @@ def run_tennis(playwright: Playwright) -> None:
     latency_part2_end = time.time()
     latency_part2_report_end = latency_part2_end - latency_part2_start
     print(
-        Fore.GREEN + f"\n\033[1mBooking completed at {datetime.now(beijing)} in {latency_part2_report_end:.2f} seconds!\033[0m" + Style.RESET_ALL)
+        Fore.GREEN + f"\n\033[1mBooking completed at {datetime.now(beijing)} "
+                     f"in {latency_part2_report_end:.2f} seconds!\033[0m" + Style.RESET_ALL)
     logging.info(f"Booking completed at {datetime.now(beijing)} in {latency_part2_report_end:.2f} seconds!")
     logging.error("Script terminated due to an error.")
     page1.get_by_role("button", name="立即支付").click()
@@ -558,6 +576,7 @@ def run_tennis(playwright: Playwright) -> None:
 
 
 def run_badminton(playwright: Playwright) -> None:
+    global animations, timeslots_badminton
     current_datetime = datetime.now(beijing)
     cutoff_time = current_datetime.replace(hour=time_restriction_hour, minute=15, second=0, microsecond=0)
     # Check if the current time is past the cutoff time
@@ -654,8 +673,8 @@ def run_badminton(playwright: Playwright) -> None:
         captcha_input = input("\033[1mPlease enter the captcha: \033[0m")
 
         # Animation prompt
-        logging.info(f"OS: {find_OS()}")
-        if find_OS() == 'MacOS':
+        logging.info(f"OS: {find_os()}")
+        if find_os() == 'MacOS':
             animations = input("\033[1mWould you like to see animations while waiting? (Y/N): \033[0m")
             logging.info(f"Animations: {animations}")
 
@@ -673,7 +692,7 @@ def run_badminton(playwright: Playwright) -> None:
         page.get_by_role("button", name="SIGN IN").click()
 
         # Cmatrix animation
-        if animations == 'Y' or animations == 'y' and find_OS() == 'MacOS':
+        if animations == 'Y' or animations == 'y' and find_os() == 'MacOS':
             run_cmatrix_for_seconds(3)
             clear_screen()
             logging.info(f"EXECUTED SUCCESSFULLY: cmatrix animation")
@@ -751,7 +770,7 @@ def run_badminton(playwright: Playwright) -> None:
     weekday = weekdays[next_week_date.weekday()]
 
     # Aquarium animation
-    if animations == 'Y' or animations == 'y' and find_OS() == 'MacOS':
+    if animations == 'Y' or animations == 'y' and find_os() == 'MacOS':
         run_ascii_aquarium_until_1157()
         clear_screen()
         logging.info(f"AQUARIUM ANIMATION FINISHED; WAITING FOR 12:00")
@@ -862,7 +881,8 @@ def run_badminton(playwright: Playwright) -> None:
     latency_part2_end = time.time()
     latency_part2_report_end = latency_part2_end - latency_part2_start
     print(
-        Fore.GREEN + f"\n\033[1mBooking completed at {datetime.now(beijing)} in {latency_part2_report_end:.2f} seconds!\033[0m" + Style.RESET_ALL)
+        Fore.GREEN + f"\n\033[1mBooking completed at {datetime.now(beijing)} "
+                     f"in {latency_part2_report_end:.2f} seconds!\033[0m" + Style.RESET_ALL)
     logging.info(f"Booking completed at {datetime.now(beijing)} in {latency_part2_report_end:.2f} seconds!")
     logging.error("Script terminated due to an error.")
 
