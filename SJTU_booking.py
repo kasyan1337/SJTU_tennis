@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import base64
+import configparser
 import getpass
 import logging
 import os
@@ -25,8 +26,8 @@ init()
 chosen_timeout = 200  # Timeout for waiting for element to appear (booking page)
 random_timeout = 0.5  # Random timeout for waiting between actions
 timeout_booking_page = 0.1  # Timeout for waiting between actions on the booking page
+auto_launch = auto_captcha = 0  # Done automatically by config (1 for ON)
 
-auto_captcha = 1  # Automatic captcha (1 for ON)
 time_restriction_hour = 12  # Hour after which the script will not run +15(12:15)
 updater = 1  # Update the script from GitHub (1 for ON)
 
@@ -119,6 +120,17 @@ animations = None
 
 #       ############################### CORE FUNCTIONS ###############################
 
+def auto_launch_or_manual():
+    """
+    Decides whether to start manually or automatically based on config
+    """
+    global auto_launch, auto_captcha
+
+    how_to_start_config = config_parser()[6]
+    auto_launch = int(how_to_start_config)
+    auto_captcha = int(how_to_start_config)
+
+
 def start_logs():
     """
     Start logging to a file in the 'booking_logs' directory.
@@ -146,7 +158,7 @@ def start_logs():
                  f"chosen_timeout {chosen_timeout} ms\n"
                  f"random_timeout {random_timeout} s\n"
                  f"timeout_booking_page {timeout_booking_page} s\n"
-                 f"auto_captcha {auto_captcha}\n"
+                 f"auto_launch {auto_launch}\n"
                  f"time_restriction_hour {time_restriction_hour}\n"
                  f"updater {updater}\n{'=' * 30}\n\n")
 
@@ -206,6 +218,30 @@ def extract_latency_logs(source_log_file, output_log_file):
         with open(output_log_file, 'w') as output:
             for line in lines_to_write:
                 output.write(line)
+
+
+def config_parser():
+    """
+    Parses the config.ini file for the user's credentials.
+    Not used just an example.
+    """
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+
+    username_config = config['credentials']['username']
+    user_password_config = config['credentials']['password']
+    timeslot_config = config['credentials']['timeslot']
+    badminton_court_config = config['credentials']['badminton_court']
+    animations_config = config['credentials']['animations']
+    tennis_or_badminton_config = config['credentials']['tennis_or_badminton']
+    auto_launch_from_config = config['credentials']['auto_launch_from_config']
+
+    # Not used; just notes of another method
+    # username_zsh = os.getenv('SJTU_USERNAME')
+    # user_password_zsh = os.getenv('SJTU_USER_PASSWORD')
+
+    return (username_config, user_password_config, timeslot_config, badminton_court_config, animations_config,
+            tennis_or_badminton_config, auto_launch_from_config)
 
 
 def update_file_from_github(file_name):
@@ -346,6 +382,31 @@ def manual_setup():
     tennis_or_badminton()
 
 
+def tennis_or_badminton_automatic():
+    """
+    Automatically chooses sport based on config
+    """
+    tennis_or_badminton_config = config_parser()[5]
+
+    if tennis_or_badminton_config == 'T' or tennis_or_badminton_config == 't':
+        logging.info("USER SELECTED TENNIS")
+        try:
+            with sync_playwright() as playwright:
+                run_tennis(playwright)
+            logging.info("Script successfully ended.")
+        except Exception as e:
+            logging.exception(f"An unexpected error occurred: {e}")
+
+    elif tennis_or_badminton_config == 'B' or tennis_or_badminton_config == 'b':
+        logging.info("USER SELECTED BADMINTON")
+        try:
+            with sync_playwright() as playwright:
+                run_badminton(playwright)
+            logging.info("Script successfully ended.")
+        except Exception as e:
+            logging.exception(f"An unexpected error occurred: {e}")
+
+
 def tennis_or_badminton():
     """
     Prompts the user to select tennis or badminton.
@@ -380,7 +441,7 @@ def tennis_or_badminton():
 
 
 def run_tennis(playwright: Playwright) -> None:
-    global animations, automatic_captcha, captcha_input
+    global animations, automatic_captcha, captcha_input, chosen_timeslot, latency_part1_start
     current_datetime = datetime.now(beijing)
     cutoff_time = current_datetime.replace(hour=time_restriction_hour, minute=15, second=0, microsecond=0)
     # Check if the current time is past the cutoff time
@@ -420,106 +481,202 @@ def run_tennis(playwright: Playwright) -> None:
         "https://my.sjtu.edu.cn/ui/me")
     logging.info(f"EXECUTED SUCCESSFULLY: Page accessed.")
 
-    chosen_timeslot = input('\033[1mPlease enter your desired time slot(format: "7,8,9,10...18,19,20,21"):\033[0m')
-    # timeslot format test
-    while True:
-        # Check if input is all digits
-        if chosen_timeslot.isdigit():
-            # Convert to integer
-            chosen_timeslot_int = int(chosen_timeslot)
-            # Check if the integer is in the timeslots keys
-            if chosen_timeslot_int in timeslots_tennis:
-                break  # Exit the loop if valid timeslot
-            else:
-                print(Fore.RED + "The timeslot is not available." + Style.RESET_ALL)
-        else:
-            print(Fore.RED + "Input is not a valid number." + Style.RESET_ALL)
-
-        # Prompt again if not valid or not available
-        chosen_timeslot = input(
-            'Please enter your desired time slot \033[1min format "8,9,10...19,20,21".\033[0m\n'
-            'Input has to be a number from the available slots:\n')
-
     # Login
-    while True:
-        # AUTOMATIC CAPTCHA
-        if auto_captcha == 1:
-            page.wait_for_selector('img#captcha-img')
-            logging.info("CAPTCHA: img#captcha-img")
+    if auto_launch == 1:
+        username_config = config_parser()[0]
+        user_password_config = config_parser()[1]
+        timeslot_config = config_parser()[2]
+        animations_config = config_parser()[4]
 
-            # Get the Data URI of the captcha image
-            image_data_uri = page.evaluate("""() => {
-                const img = document.querySelector('img#captcha-img');
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = img.naturalWidth;
-                canvas.height = img.naturalHeight;
-                ctx.drawImage(img, 0, 0);
-                return canvas.toDataURL('image/jpeg');
-            }""")
+        chosen_timeslot = timeslot_config
+        # timeslot format test
+        while True:
+            # Check if input is all digits
+            if chosen_timeslot.isdigit():
+                # Convert to integer
+                chosen_timeslot_int = int(chosen_timeslot)
+                # Check if the integer is in the timeslots keys
+                if chosen_timeslot_int in timeslots_tennis:
+                    break  # Exit the loop if valid timeslot
+                else:
+                    print(Fore.RED + "The timeslot is not available." + Style.RESET_ALL)
+            else:
+                print(Fore.RED + "Input is not a valid number." + Style.RESET_ALL)
 
-            # Extract base64 data from URI
-            base64_data = image_data_uri.split(',')[1]
-            image_data = base64.b64decode(base64_data)
-            logging.info("CAPTCHA: Extracted base64 data from URI")
+            # Prompt again if not valid or not available
+            chosen_timeslot = input(
+                'Please enter your desired time slot \033[1min format "8,9,10...19,20,21".\033[0m\n'
+                'Input has to be a number from the available slots:\n')
 
-            # Save the captcha image
-            image_path = 'captcha.jpg'
-            with open(image_path, 'wb') as image_file:
-                image_file.write(image_data)
-            logging.info("CAPTCHA: Saved the captcha image")
+        while True:
+            # AUTOMATIC CAPTCHA
+            if auto_captcha == 1:
+                page.wait_for_selector('img#captcha-img')
+                logging.info("CAPTCHA: img#captcha-img")
 
-            extracted_text = ocr_core(image_path)
-            automatic_captcha = extracted_text
-            logging.info(f"CAPTCHA: OCR performed successfully({extracted_text})")
+                # Get the Data URI of the captcha image
+                image_data_uri = page.evaluate("""() => {
+                    const img = document.querySelector('img#captcha-img');
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    ctx.drawImage(img, 0, 0);
+                    return canvas.toDataURL('image/jpeg');
+                }""")
 
-        # INPUTS
-        latency_part1_start = time.time()
-        # Prompt the user for their account details
-        account_input = input("\033[1mPlease enter your username: \033[0m")
-        password_input = getpass.getpass("\033[1mPlease enter your password: \033[0m")
-        if auto_captcha != 1:
-            captcha_input = input("\033[1mPlease enter the captcha: \033[0m")
-        logging.info(f"{account_input} selected timeslot: {chosen_timeslot_int}")
-        # Animation prompt
-        logging.info(f"OS: {find_os()}")
-        if find_os() == 'MacOS' and account_input not in animations_not_installed_macos:
-            animations = input("\033[1mWould you like to see animations while waiting? (Y/N): \033[0m")
-            logging.info(f"Animations: {animations}")
+                # Extract base64 data from URI
+                base64_data = image_data_uri.split(',')[1]
+                image_data = base64.b64decode(base64_data)
+                logging.info("CAPTCHA: Extracted base64 data from URI")
 
-        # Fill in the login form
-        page.get_by_placeholder("Account").click()
-        page.get_by_placeholder("Account").fill(account_input)
-        page.get_by_placeholder("Password").click()
-        page.get_by_placeholder("Password").fill(password_input)
-        page.get_by_placeholder("Captcha").click()
-        if auto_captcha == 1:
-            page.get_by_placeholder("Captcha").fill(automatic_captcha)
-        else:
-            page.get_by_placeholder("Captcha").fill(captcha_input)
-        page.get_by_role("button", name="SIGN IN").click()
-        # Cmatrix animation
-        if animations == 'Y' or animations == 'y' and find_os() == 'MacOS':
-            run_cmatrix_for_seconds(3)
-            clear_screen()
-            logging.info(f"EXECUTED SUCCESSFULLY: cmatrix animation")
+                # Save the captcha image
+                image_path = 'captcha.jpg'
+                with open(image_path, 'wb') as image_file:
+                    image_file.write(image_data)
+                logging.info("CAPTCHA: Saved the captcha image")
 
-        # Wait for response after login attempt
-        page.wait_for_timeout(2000)  # Adjust timeout as needed
+                extracted_text = ocr_core(image_path)
+                automatic_captcha = extracted_text
+                logging.info(f"CAPTCHA: OCR performed successfully({extracted_text})")
 
-        # Check for login failure
-        if page.is_visible("text=Wrong username or password") or page.is_visible("text=Wrong captcha"):
-            if page.is_visible("text=Wrong captcha"):
-                logging.info("CAPTCHA: WRONG CAPTCHA")
-            print(Fore.RED + "Login failed. Please try again." + Style.RESET_ALL)
-        else:
-            print(Fore.GREEN + "Login successful, proceeding..." + Style.RESET_ALL)
-            break
+            latency_part1_start = time.time()
+            logging.info(f"{username_config} selected timeslot: {chosen_timeslot_int}")
+            # Animation prompt
+            logging.info(f"OS: {find_os()}")
+            if find_os() == 'MacOS' and username_config not in animations_not_installed_macos:
+                animations = animations_config
+                logging.info(f"Animations: {animations}")
+
+            # Fill in the login form
+            page.get_by_placeholder("Account").click()
+            page.get_by_placeholder("Account").fill(username_config)
+            page.get_by_placeholder("Password").click()
+            page.get_by_placeholder("Password").fill(user_password_config)
+            page.get_by_placeholder("Captcha").click()
+            if auto_captcha == 1:
+                page.get_by_placeholder("Captcha").fill(automatic_captcha)
+            else:
+                page.get_by_placeholder("Captcha").fill(captcha_input)
+            page.get_by_role("button", name="SIGN IN").click()
+            # Cmatrix animation
+            if animations == 'Y' or animations == 'y' and find_os() == 'MacOS':
+                run_cmatrix_for_seconds(3)
+                clear_screen()
+                logging.info(f"EXECUTED SUCCESSFULLY: cmatrix animation")
+
+            # Wait for response after login attempt
+            page.wait_for_timeout(2000)  # Adjust timeout as needed
+
+            # Check for login failure
+            if page.is_visible("text=Wrong username or password") or page.is_visible("text=Wrong captcha"):
+                if page.is_visible("text=Wrong captcha"):
+                    logging.info("CAPTCHA: WRONG CAPTCHA")
+                print(Fore.RED + "Login failed. Please try again." + Style.RESET_ALL)
+            else:
+                print(Fore.GREEN + "Login successful, proceeding..." + Style.RESET_ALL)
+                break
+
+    if auto_launch != 1:
+        chosen_timeslot = input('\033[1mPlease enter your desired time slot(format: "7,8,9,10...18,19,20,21"):\033[0m')
+        # timeslot format test
+        while True:
+            # Check if input is all digits
+            if chosen_timeslot.isdigit():
+                # Convert to integer
+                chosen_timeslot_int = int(chosen_timeslot)
+                # Check if the integer is in the timeslots keys
+                if chosen_timeslot_int in timeslots_tennis:
+                    break  # Exit the loop if valid timeslot
+                else:
+                    print(Fore.RED + "The timeslot is not available." + Style.RESET_ALL)
+            else:
+                print(Fore.RED + "Input is not a valid number." + Style.RESET_ALL)
+
+            # Prompt again if not valid or not available
+            chosen_timeslot = input(
+                'Please enter your desired time slot \033[1min format "8,9,10...19,20,21".\033[0m\n'
+                'Input has to be a number from the available slots:\n')
+
+        while True:
+            # AUTOMATIC CAPTCHA
+            if auto_captcha == 1:
+                page.wait_for_selector('img#captcha-img')
+                logging.info("CAPTCHA: img#captcha-img")
+
+                # Get the Data URI of the captcha image
+                image_data_uri = page.evaluate("""() => {
+                    const img = document.querySelector('img#captcha-img');
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    ctx.drawImage(img, 0, 0);
+                    return canvas.toDataURL('image/jpeg');
+                }""")
+
+                # Extract base64 data from URI
+                base64_data = image_data_uri.split(',')[1]
+                image_data = base64.b64decode(base64_data)
+                logging.info("CAPTCHA: Extracted base64 data from URI")
+
+                # Save the captcha image
+                image_path = 'captcha.jpg'
+                with open(image_path, 'wb') as image_file:
+                    image_file.write(image_data)
+                logging.info("CAPTCHA: Saved the captcha image")
+
+                extracted_text = ocr_core(image_path)
+                automatic_captcha = extracted_text
+                logging.info(f"CAPTCHA: OCR performed successfully({extracted_text})")
+
+            # INPUTS
+            latency_part1_start = time.time()
+            # Prompt the user for their account details
+            account_input = input("\033[1mPlease enter your username: \033[0m")
+            password_input = getpass.getpass("\033[1mPlease enter your password: \033[0m")
+            if auto_captcha != 1:
+                captcha_input = input("\033[1mPlease enter the captcha: \033[0m")
+            logging.info(f"{account_input} selected timeslot: {chosen_timeslot_int}")
+            # Animation prompt
+            logging.info(f"OS: {find_os()}")
+            if find_os() == 'MacOS' and account_input not in animations_not_installed_macos:
+                animations = input("\033[1mWould you like to see animations while waiting? (Y/N): \033[0m")
+                logging.info(f"Animations: {animations}")
+
+            # Fill in the login form
+            page.get_by_placeholder("Account").click()
+            page.get_by_placeholder("Account").fill(account_input)
+            page.get_by_placeholder("Password").click()
+            page.get_by_placeholder("Password").fill(password_input)
+            page.get_by_placeholder("Captcha").click()
+            if auto_captcha == 1:
+                page.get_by_placeholder("Captcha").fill(automatic_captcha)
+            else:
+                page.get_by_placeholder("Captcha").fill(captcha_input)
+            page.get_by_role("button", name="SIGN IN").click()
+            # Cmatrix animation
+            if animations == 'Y' or animations == 'y' and find_os() == 'MacOS':
+                run_cmatrix_for_seconds(3)
+                clear_screen()
+                logging.info(f"EXECUTED SUCCESSFULLY: cmatrix animation")
+
+            # Wait for response after login attempt
+            page.wait_for_timeout(2000)  # Adjust timeout as needed
+
+            # Check for login failure
+            if page.is_visible("text=Wrong username or password") or page.is_visible("text=Wrong captcha"):
+                if page.is_visible("text=Wrong captcha"):
+                    logging.info("CAPTCHA: WRONG CAPTCHA")
+                print(Fore.RED + "Login failed. Please try again." + Style.RESET_ALL)
+            else:
+                print(Fore.GREEN + "Login successful, proceeding..." + Style.RESET_ALL)
+                break
 
     logging.info(f"EXECUTED SUCCESSFULLY: Logged in")
     time.sleep(random_timeout)
     login_successful = True
-    if login_successful:
+    if login_successful and auto_captcha == 1:
         # Delete the captcha image after use
         os.remove('captcha.jpg')
         logging.info("CAPTCHA: Image deleted after successful login.")
@@ -741,7 +898,7 @@ def run_tennis(playwright: Playwright) -> None:
 
 
 def run_badminton(playwright: Playwright) -> None:
-    global animations, timeslots_badminton, automatic_captcha, captcha_input
+    global animations, timeslots_badminton, automatic_captcha, captcha_input, chosen_timeslot, latency_part1_start
     current_datetime = datetime.now(beijing)
     cutoff_time = current_datetime.replace(hour=time_restriction_hour, minute=15, second=0, microsecond=0)
     # Check if the current time is past the cutoff time
@@ -781,139 +938,261 @@ def run_badminton(playwright: Playwright) -> None:
         "https://my.sjtu.edu.cn/ui/me")
     logging.info(f"EXECUTED SUCCESSFULLY: Page accessed.")
 
-    chosen_court = input('\033[1mPlease enter your preferred court number(format: "1,2,3,4"):\033[0m')
-    # choosing the court
-    while True:
-        if chosen_court.isdigit():
-            # Convert to integer
-            chosen_court_int = int(chosen_court)
-            if chosen_court_int in [1, 2, 3, 4]:
-                if chosen_court_int == 1:
-                    timeslots_badminton = timeslots_badminton_1
-                    seven_badminton.append(".inner-seat > div > img")
-                elif chosen_court_int == 2:
-                    timeslots_badminton = timeslots_badminton_2
-                    seven_badminton.append("div:nth-child(2) > .inner-seat > div > img")
-                elif chosen_court_int == 3:
-                    timeslots_badminton = timeslots_badminton_3
-                    seven_badminton.append("div:nth-child(3) > .inner-seat > div > img")
-                elif chosen_court_int == 4:
-                    timeslots_badminton = timeslots_badminton_4
-                    seven_badminton.append("div:nth-child(4) > .inner-seat > div > img")
-                break
-            else:
-                print(Fore.RED + "The court is not available." + Style.RESET_ALL)
-        else:
-            print(Fore.RED + "Input is not a valid number." + Style.RESET_ALL)
-        # Prompt again if not valid or not available
-        chosen_court = input('\033[1mPlease enter your preferred court number(format: "1,2,3,4"):\033[0m'
-                             'Input has to be a number from the available courts:\n')
-
-    chosen_timeslot = input('\033[1mPlease enter your desired time slot(format: "7,8,9,10...18,19,20,21"):\033[0m')
-    # timeslot format test
-    while True:
-        # Check if input is all digits
-        if chosen_timeslot.isdigit():
-            # Convert to integer
-            chosen_timeslot_int = int(chosen_timeslot)
-            # Check if the integer is in the timeslots keys
-            if 7 <= chosen_timeslot_int <= 21:
-                break  # Exit the loop if valid timeslot
-            else:
-                print(Fore.RED + "The timeslot is not available." + Style.RESET_ALL)
-        else:
-            print(Fore.RED + "Input is not a valid number." + Style.RESET_ALL)
-
-        # Prompt again if not valid or not available
-        chosen_timeslot = input(
-            'Please enter your desired time slot \033[1min format "8,9,10...19,20,21".\033[0m\n'
-            'Input has to be a number from the available slots:\n')
-
     # Login
-    while True:
-        # AUTOMATIC CAPTCHA
-        if auto_captcha == 1:
-            page.wait_for_selector('img#captcha-img')
-            logging.info("CAPTCHA: img#captcha-img")
+    if auto_launch == 1:
 
-            # Get the Data URI of the captcha image
-            image_data_uri = page.evaluate("""() => {
-                const img = document.querySelector('img#captcha-img');
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = img.naturalWidth;
-                canvas.height = img.naturalHeight;
-                ctx.drawImage(img, 0, 0);
-                return canvas.toDataURL('image/jpeg');
-            }""")
+        username_config = config_parser()[0]
+        user_password_config = config_parser()[1]
+        timeslot_config = config_parser()[2]
+        badminton_court_config = config_parser()[3]
+        animations_config = config_parser()[4]
 
-            # Extract base64 data from URI
-            base64_data = image_data_uri.split(',')[1]
-            image_data = base64.b64decode(base64_data)
-            logging.info("CAPTCHA: Extracted base64 data from URI")
+        chosen_court = badminton_court_config
+        # choosing the court
+        while True:
+            if chosen_court.isdigit():
+                # Convert to integer
+                chosen_court_int = int(chosen_court)
+                if chosen_court_int in [1, 2, 3, 4]:
+                    if chosen_court_int == 1:
+                        timeslots_badminton = timeslots_badminton_1
+                        seven_badminton.append(".inner-seat > div > img")
+                    elif chosen_court_int == 2:
+                        timeslots_badminton = timeslots_badminton_2
+                        seven_badminton.append("div:nth-child(2) > .inner-seat > div > img")
+                    elif chosen_court_int == 3:
+                        timeslots_badminton = timeslots_badminton_3
+                        seven_badminton.append("div:nth-child(3) > .inner-seat > div > img")
+                    elif chosen_court_int == 4:
+                        timeslots_badminton = timeslots_badminton_4
+                        seven_badminton.append("div:nth-child(4) > .inner-seat > div > img")
+                    break
+                else:
+                    print(Fore.RED + "The court is not available." + Style.RESET_ALL)
+            else:
+                print(Fore.RED + "Input is not a valid number." + Style.RESET_ALL)
+            # Prompt again if not valid or not available
+            chosen_court = input('\033[1mPlease enter your preferred court number(format: "1,2,3,4"):\033[0m'
+                                 'Input has to be a number from the available courts:\n')
 
-            # Save the captcha image
-            image_path = 'captcha.jpg'
-            with open(image_path, 'wb') as image_file:
-                image_file.write(image_data)
-            logging.info("CAPTCHA: Saved the captcha image")
+        chosen_timeslot = timeslot_config
+        # timeslot format test
+        while True:
+            # Check if input is all digits
+            if chosen_timeslot.isdigit():
+                # Convert to integer
+                chosen_timeslot_int = int(chosen_timeslot)
+                # Check if the integer is in the timeslots keys
+                if 7 <= chosen_timeslot_int <= 21:
+                    break  # Exit the loop if valid timeslot
+                else:
+                    print(Fore.RED + "The timeslot is not available." + Style.RESET_ALL)
+            else:
+                print(Fore.RED + "Input is not a valid number." + Style.RESET_ALL)
 
-            extracted_text = ocr_core(image_path)
-            automatic_captcha = extracted_text
-            logging.info(f"CAPTCHA: OCR performed successfully({extracted_text})")
+            # Prompt again if not valid or not available
+            chosen_timeslot = input(
+                'Please enter your desired time slot \033[1min format "8,9,10...19,20,21".\033[0m\n'
+                'Input has to be a number from the available slots:\n')
 
-        # INPUTS
-        latency_part1_start = time.time()
-        # Prompt the user for their account details
-        account_input = input("\033[1mPlease enter your username: \033[0m")
-        password_input = getpass.getpass("\033[1mPlease enter your password: \033[0m")
-        if auto_captcha != 1:
-            captcha_input = input("\033[1mPlease enter the captcha: \033[0m")
+        while True:
+            # AUTOMATIC CAPTCHA
+            if auto_captcha == 1:
+                page.wait_for_selector('img#captcha-img')
+                logging.info("CAPTCHA: img#captcha-img")
 
-        # Animation prompt
-        logging.info(f"OS: {find_os()}")
-        if find_os() == 'MacOS' and account_input not in animations_not_installed_macos:
-            animations = input("\033[1mWould you like to see animations while waiting? (Y/N): \033[0m")
-            logging.info(f"Animations: {animations}")
+                # Get the Data URI of the captcha image
+                image_data_uri = page.evaluate("""() => {
+                    const img = document.querySelector('img#captcha-img');
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    ctx.drawImage(img, 0, 0);
+                    return canvas.toDataURL('image/jpeg');
+                }""")
 
-        # log
-        logging.info(f"{account_input} selected court number: {chosen_court_int}")
-        logging.info(f"{account_input} selected timeslot: {chosen_timeslot_int}")
+                # Extract base64 data from URI
+                base64_data = image_data_uri.split(',')[1]
+                image_data = base64.b64decode(base64_data)
+                logging.info("CAPTCHA: Extracted base64 data from URI")
 
-        # Fill in the login form
-        page.get_by_placeholder("Account").click()
-        page.get_by_placeholder("Account").fill(account_input)
-        page.get_by_placeholder("Password").click()
-        page.get_by_placeholder("Password").fill(password_input)
-        page.get_by_placeholder("Captcha").click()
-        if auto_captcha == 1:
-            page.get_by_placeholder("Captcha").fill(automatic_captcha)
-        else:
-            page.get_by_placeholder("Captcha").fill(captcha_input)
-        page.get_by_role("button", name="SIGN IN").click()
+                # Save the captcha image
+                image_path = 'captcha.jpg'
+                with open(image_path, 'wb') as image_file:
+                    image_file.write(image_data)
+                logging.info("CAPTCHA: Saved the captcha image")
 
-        # Cmatrix animation
-        if animations == 'Y' or animations == 'y' and find_os() == 'MacOS':
-            run_cmatrix_for_seconds(3)
-            clear_screen()
-            logging.info(f"EXECUTED SUCCESSFULLY: cmatrix animation")
+                extracted_text = ocr_core(image_path)
+                automatic_captcha = extracted_text
+                logging.info(f"CAPTCHA: OCR performed successfully({extracted_text})")
 
-        # Wait for response after login attempt
-        page.wait_for_timeout(2000)  # Adjust timeout as needed
+            latency_part1_start = time.time()
+            logging.info(f"{username_config} selected timeslot: {chosen_timeslot_int}")
+            # Animation prompt
+            logging.info(f"OS: {find_os()}")
+            if find_os() == 'MacOS' and username_config not in animations_not_installed_macos:
+                animations = animations_config
+                logging.info(f"Animations: {animations}")
 
-        # Check for login failure
-        if page.is_visible("text=Wrong username or password") or page.is_visible("text=Wrong captcha"):
-            if page.is_visible("text=Wrong captcha"):
-                logging.info("CAPTCHA: WRONG CAPTCHA")
-            print(Fore.RED + "Login failed. Please try again." + Style.RESET_ALL)
-        else:
-            print(Fore.GREEN + "Login successful, proceeding..." + Style.RESET_ALL)
-            break
+            # Fill in the login form
+            page.get_by_placeholder("Account").click()
+            page.get_by_placeholder("Account").fill(username_config)
+            page.get_by_placeholder("Password").click()
+            page.get_by_placeholder("Password").fill(user_password_config)
+            page.get_by_placeholder("Captcha").click()
+            if auto_captcha == 1:
+                page.get_by_placeholder("Captcha").fill(automatic_captcha)
+            else:
+                page.get_by_placeholder("Captcha").fill(captcha_input)
+            page.get_by_role("button", name="SIGN IN").click()
+            # Cmatrix animation
+            if animations == 'Y' or animations == 'y' and find_os() == 'MacOS':
+                run_cmatrix_for_seconds(3)
+                clear_screen()
+                logging.info(f"EXECUTED SUCCESSFULLY: cmatrix animation")
+
+            # Wait for response after login attempt
+            page.wait_for_timeout(2000)  # Adjust timeout as needed
+
+            # Check for login failure
+            if page.is_visible("text=Wrong username or password") or page.is_visible("text=Wrong captcha"):
+                if page.is_visible("text=Wrong captcha"):
+                    logging.info("CAPTCHA: WRONG CAPTCHA")
+                print(Fore.RED + "Login failed. Please try again." + Style.RESET_ALL)
+            else:
+                print(Fore.GREEN + "Login successful, proceeding..." + Style.RESET_ALL)
+                break
+
+    if auto_launch != 1:
+
+        chosen_court = input('\033[1mPlease enter your preferred court number(format: "1,2,3,4"):\033[0m')
+        # choosing the court
+        while True:
+            if chosen_court.isdigit():
+                # Convert to integer
+                chosen_court_int = int(chosen_court)
+                if chosen_court_int in [1, 2, 3, 4]:
+                    if chosen_court_int == 1:
+                        timeslots_badminton = timeslots_badminton_1
+                        seven_badminton.append(".inner-seat > div > img")
+                    elif chosen_court_int == 2:
+                        timeslots_badminton = timeslots_badminton_2
+                        seven_badminton.append("div:nth-child(2) > .inner-seat > div > img")
+                    elif chosen_court_int == 3:
+                        timeslots_badminton = timeslots_badminton_3
+                        seven_badminton.append("div:nth-child(3) > .inner-seat > div > img")
+                    elif chosen_court_int == 4:
+                        timeslots_badminton = timeslots_badminton_4
+                        seven_badminton.append("div:nth-child(4) > .inner-seat > div > img")
+                    break
+                else:
+                    print(Fore.RED + "The court is not available." + Style.RESET_ALL)
+            else:
+                print(Fore.RED + "Input is not a valid number." + Style.RESET_ALL)
+            # Prompt again if not valid or not available
+            chosen_court = input('\033[1mPlease enter your preferred court number(format: "1,2,3,4"):\033[0m'
+                                 'Input has to be a number from the available courts:\n')
+
+        chosen_timeslot = input('\033[1mPlease enter your desired time slot(format: "7,8,9,10...18,19,20,21"):\033[0m')
+        # timeslot format test
+        while True:
+            # Check if input is all digits
+            if chosen_timeslot.isdigit():
+                # Convert to integer
+                chosen_timeslot_int = int(chosen_timeslot)
+                # Check if the integer is in the timeslots keys
+                if 7 <= chosen_timeslot_int <= 21:
+                    break  # Exit the loop if valid timeslot
+                else:
+                    print(Fore.RED + "The timeslot is not available." + Style.RESET_ALL)
+            else:
+                print(Fore.RED + "Input is not a valid number." + Style.RESET_ALL)
+
+            # Prompt again if not valid or not available
+            chosen_timeslot = input(
+                'Please enter your desired time slot \033[1min format "8,9,10...19,20,21".\033[0m\n'
+                'Input has to be a number from the available slots:\n')
+
+        while True:
+            # AUTOMATIC CAPTCHA
+            if auto_captcha == 1:
+                page.wait_for_selector('img#captcha-img')
+                logging.info("CAPTCHA: img#captcha-img")
+
+                # Get the Data URI of the captcha image
+                image_data_uri = page.evaluate("""() => {
+                    const img = document.querySelector('img#captcha-img');
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    ctx.drawImage(img, 0, 0);
+                    return canvas.toDataURL('image/jpeg');
+                }""")
+
+                # Extract base64 data from URI
+                base64_data = image_data_uri.split(',')[1]
+                image_data = base64.b64decode(base64_data)
+                logging.info("CAPTCHA: Extracted base64 data from URI")
+
+                # Save the captcha image
+                image_path = 'captcha.jpg'
+                with open(image_path, 'wb') as image_file:
+                    image_file.write(image_data)
+                logging.info("CAPTCHA: Saved the captcha image")
+
+                extracted_text = ocr_core(image_path)
+                automatic_captcha = extracted_text
+                logging.info(f"CAPTCHA: OCR performed successfully({extracted_text})")
+
+            # INPUTS
+            latency_part1_start = time.time()
+            # Prompt the user for their account details
+            account_input = input("\033[1mPlease enter your username: \033[0m")
+            password_input = getpass.getpass("\033[1mPlease enter your password: \033[0m")
+            if auto_captcha != 1:
+                captcha_input = input("\033[1mPlease enter the captcha: \033[0m")
+            logging.info(f"{account_input} selected timeslot: {chosen_timeslot_int}")
+            # Animation prompt
+            logging.info(f"OS: {find_os()}")
+            if find_os() == 'MacOS' and account_input not in animations_not_installed_macos:
+                animations = input("\033[1mWould you like to see animations while waiting? (Y/N): \033[0m")
+                logging.info(f"Animations: {animations}")
+
+            # Fill in the login form
+            page.get_by_placeholder("Account").click()
+            page.get_by_placeholder("Account").fill(account_input)
+            page.get_by_placeholder("Password").click()
+            page.get_by_placeholder("Password").fill(password_input)
+            page.get_by_placeholder("Captcha").click()
+            if auto_captcha == 1:
+                page.get_by_placeholder("Captcha").fill(automatic_captcha)
+            else:
+                page.get_by_placeholder("Captcha").fill(captcha_input)
+            page.get_by_role("button", name="SIGN IN").click()
+            # Cmatrix animation
+            if animations == 'Y' or animations == 'y' and find_os() == 'MacOS':
+                run_cmatrix_for_seconds(3)
+                clear_screen()
+                logging.info(f"EXECUTED SUCCESSFULLY: cmatrix animation")
+
+            # Wait for response after login attempt
+            page.wait_for_timeout(2000)  # Adjust timeout as needed
+
+            # Check for login failure
+            if page.is_visible("text=Wrong username or password") or page.is_visible("text=Wrong captcha"):
+                if page.is_visible("text=Wrong captcha"):
+                    logging.info("CAPTCHA: WRONG CAPTCHA")
+                print(Fore.RED + "Login failed. Please try again." + Style.RESET_ALL)
+            else:
+                print(Fore.GREEN + "Login successful, proceeding..." + Style.RESET_ALL)
+                break
 
     logging.info(f"EXECUTED SUCCESSFULLY: Logged in")
     time.sleep(random_timeout)
     login_successful = True
-    if login_successful:
+    if login_successful and auto_captcha == 1:
         # Delete the captcha image after use
         os.remove('captcha.jpg')
         logging.info("CAPTCHA: Image deleted after successful login.")
@@ -1143,10 +1422,19 @@ def run_badminton(playwright: Playwright) -> None:
 
 #       ############################### RUN ###############################
 
+# Start automatically or manually based on config
+auto_launch_or_manual()
+
+# Starting logs
 start_logs()
 
+# Update or not
 if updater == 1:
     script_name_with_extension = os.path.basename(__file__)
     update_file_from_github(script_name_with_extension)
 
-tennis_or_badminton()
+# Main function
+if auto_launch == 1:
+    tennis_or_badminton_automatic()
+else:
+    tennis_or_badminton()

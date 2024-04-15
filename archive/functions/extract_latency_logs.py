@@ -59,4 +59,4 @@ def extract_latency_logs(source_log_file, output_log_file):
 
 
 # Call this function with the path to your main log file and the desired output file for latencies
-extract_latency_logs('../booking_logs/SJTU_booking_log.log', 'booking_logs/Stats.log')
+extract_latency_logs('../../booking_logs/SJTU_booking_log.log', 'booking_logs/Stats.log')
