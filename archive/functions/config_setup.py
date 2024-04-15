@@ -17,11 +17,11 @@ def config_parser():
     animations_config = config['credentials']['animations']
     tennis_or_badminton_config = config['credentials']['tennis_or_badminton']
 
-
     username_zsh = os.getenv('SJTU_USERNAME')
     user_password_zsh = os.getenv('SJTU_USER_PASSWORD')
 
-    return username_config, user_password_config, timeslot_config, badminton_court_config, animations_config, tennis_or_badminton_config
+    return (username_config, user_password_config, timeslot_config, badminton_court_config, animations_config,
+            tennis_or_badminton_config)
 
 
 username = config_parser()[0]
@@ -32,5 +32,3 @@ animations = config_parser()[4]
 tennis_or_badminton_config = config_parser()[5]
 
 print(username, user_password, timeslot, badminton_court, animations, tennis_or_badminton_config)
-
-

@@ -10,10 +10,10 @@ archive/archive_methods
 testing_files
 tennis.app
 config.ini
+notes.txt
+crontab_setup.txt
 
 captcha.jpg
-run_sjtu.sh
-
 # Created by .ignore support plugin (hsz.mobi)
 ### Diff template
 *.patch

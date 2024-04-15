@@ -126,6 +126,10 @@ def auto_launch_or_manual():
     """
     global auto_launch, auto_captcha
 
+    booking_off_crontab_config = config_parser()[7]
+    if booking_off_crontab_config == 'OFF' or booking_off_crontab_config == 'off':
+        quit()
+
     how_to_start_config = config_parser()[6]
     auto_launch = int(how_to_start_config)
     auto_captcha = int(how_to_start_config)
@@ -235,13 +239,13 @@ def config_parser():
     animations_config = config['credentials']['animations']
     tennis_or_badminton_config = config['credentials']['tennis_or_badminton']
     auto_launch_from_config = config['credentials']['auto_launch_from_config']
-
+    booking_off_crontab_config = config['credentials']['booking_crontab']
     # Not used; just notes of another method
     # username_zsh = os.getenv('SJTU_USERNAME')
     # user_password_zsh = os.getenv('SJTU_USER_PASSWORD')
 
     return (username_config, user_password_config, timeslot_config, badminton_court_config, animations_config,
-            tennis_or_badminton_config, auto_launch_from_config)
+            tennis_or_badminton_config, auto_launch_from_config, booking_off_crontab_config)
 
 
 def update_file_from_github(file_name):
