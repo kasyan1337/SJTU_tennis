@@ -3,3 +3,5 @@ colorama
 pytz
 requests
 boto3
+pytesseract
+PIL
