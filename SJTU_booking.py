@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import base64
 import getpass
 import logging
 import os
@@ -10,7 +11,9 @@ import threading
 import time
 from datetime import datetime, timedelta
 
+import pytesseract
 import requests
+from PIL import Image
 from colorama import init, Fore, Style
 from playwright.sync_api import Playwright, sync_playwright
 from playwright.sync_api import TimeoutError
@@ -23,6 +26,7 @@ chosen_timeout = 200  # Timeout for waiting for element to appear (booking page)
 random_timeout = 0.5  # Random timeout for waiting between actions
 timeout_booking_page = 0.1  # Timeout for waiting between actions on the booking page
 
+auto_captcha = 1  # Automatic captcha (1 for ON)
 time_restriction_hour = 12  # Hour after which the script will not run +15(12:15)
 updater = 1  # Update the script from GitHub (1 for ON)
 
@@ -107,6 +111,8 @@ timeslots_badminton_4 = {8: "div:nth-child(3) > div:nth-child(4) > .inner-seat >
                          20: "div:nth-child(15) > div:nth-child(4) > .inner-seat > div > img",
                          21: "div:nth-child(16) > div:nth-child(4) > .inner-seat > div > img"}
 
+animations_not_installed_macos = ['wailanisangue']
+
 beijing = timezone('Asia/Shanghai')
 animations = None
 
@@ -128,20 +134,78 @@ def start_logs():
 
     # Get the last modification time of the file
     last_modified_timestamp = os.path.getmtime(script_path)
-    last_modified_time = datetime.fromtimestamp(last_modified_timestamp).strftime('%Y-%m-%d %H:%M:%S')
-
+    last_modified_time = datetime.fromtimestamp(last_modified_timestamp).strftime('%H-%M-%S %d-%m-%Y')
 
     logging.basicConfig(filename=log_path, level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s', filemode='a')
 
-    logging.info(f"\n\n\n{'=' * 30}\nNew session started at \n{datetime.now(beijing)}\n{'=' * 30}\n"
+    logging.info(f"\n\n\n{'=' * 30}\nNew session started at "
+                 f"{datetime.now(beijing).strftime('%H-%M-%S %d-%m-%Y')}\n{'=' * 30}\n"
                  f"Script last modified: {last_modified_time}\n"
                  f"Setup:\n"
                  f"chosen_timeout {chosen_timeout} ms\n"
                  f"random_timeout {random_timeout} s\n"
                  f"timeout_booking_page {timeout_booking_page} s\n"
+                 f"auto_captcha {auto_captcha}\n"
                  f"time_restriction_hour {time_restriction_hour}\n"
                  f"updater {updater}\n{'=' * 30}\n\n")
+
+
+def extract_latency_logs(source_log_file, output_log_file):
+    """
+    Extracts latencies from a log file and writes them to a new file.
+    """
+    latency_pattern = re.compile(r'latency: (\d+\.\d+) seconds')
+    setup_pattern = re.compile(
+        r'Script last modified|Setup:|chosen_timeout|random_timeout|'
+        r'timeout_booking_page|auto_captcha|time_restriction_hour|updater')
+    user_pattern = re.compile(r'selected timeslot|OS:|Animations:')
+    error_pattern = re.compile(r'ERROR -')
+    executed_successfully_pattern = re.compile(r'EXECUTED SUCCESSFULLY: 提交订单')
+    session_start_pattern = re.compile(r"New session started at")
+
+    last_executed_successfully = None
+    session_successful = False
+    first_session = True
+
+    with open(source_log_file, 'r') as source:
+        lines_to_write = []
+
+        for line in source:
+            if session_start_pattern.search(line):
+                if not first_session:
+                    success_status = "Successfully submitted!" if session_successful else "Submission failed!"
+                    lines_to_write.append(f"Session Status: {success_status}\n")
+                    lines_to_write.append('=' * 30 + '\n')
+                session_start_time = line.split()[-1]
+                lines_to_write.append('=' * 30 + '\n')
+                lines_to_write.append(f"Session started at {session_start_time}\n")
+                first_session = False
+                session_successful = False
+            elif setup_pattern.search(line) or user_pattern.search(line) or "seconds" in line:
+                lines_to_write.append(line)
+            elif latency_pattern.search(line):
+                match = latency_pattern.search(line)
+                if match:
+                    latency = match.group(1)
+                    lines_to_write.append(f"{line.strip()} - Extracted Latency: {latency} seconds\n")
+            elif executed_successfully_pattern.search(line):
+                session_successful = True
+                lines_to_write.append(line)
+            elif error_pattern.search(line):
+                if last_executed_successfully:
+                    lines_to_write.append(last_executed_successfully)
+                lines_to_write.append(line)
+                last_executed_successfully = None
+
+        if not first_session:
+            success_status = "Successfully submitted!" if session_successful else "Submission failed!"
+            lines_to_write.append(f"Session Status: {success_status}\n")
+            lines_to_write.append('=' * 30 + '\n')
+
+        with open(output_log_file, 'w') as output:
+            for line in lines_to_write:
+                output.write(line)
 
 
 def update_file_from_github(file_name):
@@ -183,6 +247,11 @@ def find_os():
             return 'Other POSIX'
     else:
         return 'Unknown'
+
+
+def ocr_core(filename):
+    text = pytesseract.image_to_string(Image.open(filename))
+    return text
 
 
 def run_cmatrix_for_seconds(seconds):
@@ -244,6 +313,39 @@ def run_ascii_aquarium_until_1157():
         time_check_thread.join()
 
 
+def manual_setup():
+    """
+    Manually set up the script with custom settings.
+    """
+    global time_restriction_hour, auto_captcha, chosen_timeout, random_timeout, timeout_booking_page
+    time_restriction_hour_off = input("Lift the time restriction? (y/n)")
+    if time_restriction_hour_off == 'y':
+        time_restriction_hour = 23
+        print("Time restriction lifted manually.")
+        logging.info("Time restriction lifted manually.")
+    auto_captcha_toggle = input("Toggle automatic captcha? (y/n)")
+    if auto_captcha_toggle == 'y':
+        auto_captcha = 1
+        print("Automatic captcha enabled manually.")
+        logging.info("Automatic captcha enabled manually.")
+    elif auto_captcha_toggle == 'n':
+        auto_captcha = 0
+        print("Automatic captcha disabled manually.")
+        logging.info("Automatic captcha disabled manually.")
+
+    change_timeouts_manually = input("Change timeouts manually? (y/n)")
+    if change_timeouts_manually == 'y':
+        chosen_timeout = int(input("Enter the new chosen_timeout: "))
+        random_timeout = float(input("Enter the new random_timeout: "))
+        timeout_booking_page = float(input("Enter the new timeout_booking_page: "))
+        print("Timeouts changed manually.")
+        logging.info(f"Timeouts changed manually.\n"
+                     f"chosen_timeout {chosen_timeout} ms\n"
+                     f"random_timeout {random_timeout} s\n"
+                     f"timeout_booking_page {timeout_booking_page} s")
+    tennis_or_badminton()
+
+
 def tennis_or_badminton():
     """
     Prompts the user to select tennis or badminton.
@@ -267,6 +369,9 @@ def tennis_or_badminton():
         except Exception as e:
             logging.exception(f"An unexpected error occurred: {e}")
 
+    elif tennis_or_badminton_input == 'kasim':
+        manual_setup()
+
     else:
         print("Invalid input. Please try again.")
         logging.error(f"User input error: {tennis_or_badminton_input}. Exiting script.")
@@ -275,7 +380,7 @@ def tennis_or_badminton():
 
 
 def run_tennis(playwright: Playwright) -> None:
-    global animations
+    global animations, automatic_captcha, captcha_input
     current_datetime = datetime.now(beijing)
     cutoff_time = current_datetime.replace(hour=time_restriction_hour, minute=15, second=0, microsecond=0)
     # Check if the current time is past the cutoff time
@@ -337,15 +442,48 @@ def run_tennis(playwright: Playwright) -> None:
 
     # Login
     while True:
+        # AUTOMATIC CAPTCHA
+        if auto_captcha == 1:
+            page.wait_for_selector('img#captcha-img')
+            logging.info("CAPTCHA: img#captcha-img")
+
+            # Get the Data URI of the captcha image
+            image_data_uri = page.evaluate("""() => {
+                const img = document.querySelector('img#captcha-img');
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                ctx.drawImage(img, 0, 0);
+                return canvas.toDataURL('image/jpeg');
+            }""")
+
+            # Extract base64 data from URI
+            base64_data = image_data_uri.split(',')[1]
+            image_data = base64.b64decode(base64_data)
+            logging.info("CAPTCHA: Extracted base64 data from URI")
+
+            # Save the captcha image
+            image_path = 'captcha.jpg'
+            with open(image_path, 'wb') as image_file:
+                image_file.write(image_data)
+            logging.info("CAPTCHA: Saved the captcha image")
+
+            extracted_text = ocr_core(image_path)
+            automatic_captcha = extracted_text
+            logging.info(f"CAPTCHA: OCR performed successfully({extracted_text})")
+
+        # INPUTS
         latency_part1_start = time.time()
         # Prompt the user for their account details
         account_input = input("\033[1mPlease enter your username: \033[0m")
         password_input = getpass.getpass("\033[1mPlease enter your password: \033[0m")
-        captcha_input = input("\033[1mPlease enter the captcha: \033[0m")
+        if auto_captcha != 1:
+            captcha_input = input("\033[1mPlease enter the captcha: \033[0m")
         logging.info(f"{account_input} selected timeslot: {chosen_timeslot_int}")
         # Animation prompt
         logging.info(f"OS: {find_os()}")
-        if find_os() == 'MacOS':
+        if find_os() == 'MacOS' and account_input not in animations_not_installed_macos:
             animations = input("\033[1mWould you like to see animations while waiting? (Y/N): \033[0m")
             logging.info(f"Animations: {animations}")
 
@@ -355,7 +493,10 @@ def run_tennis(playwright: Playwright) -> None:
         page.get_by_placeholder("Password").click()
         page.get_by_placeholder("Password").fill(password_input)
         page.get_by_placeholder("Captcha").click()
-        page.get_by_placeholder("Captcha").fill(captcha_input)
+        if auto_captcha == 1:
+            page.get_by_placeholder("Captcha").fill(automatic_captcha)
+        else:
+            page.get_by_placeholder("Captcha").fill(captcha_input)
         page.get_by_role("button", name="SIGN IN").click()
         # Cmatrix animation
         if animations == 'Y' or animations == 'y' and find_os() == 'MacOS':
@@ -368,6 +509,8 @@ def run_tennis(playwright: Playwright) -> None:
 
         # Check for login failure
         if page.is_visible("text=Wrong username or password") or page.is_visible("text=Wrong captcha"):
+            if page.is_visible("text=Wrong captcha"):
+                logging.info("CAPTCHA: WRONG CAPTCHA")
             print(Fore.RED + "Login failed. Please try again." + Style.RESET_ALL)
         else:
             print(Fore.GREEN + "Login successful, proceeding..." + Style.RESET_ALL)
@@ -375,6 +518,11 @@ def run_tennis(playwright: Playwright) -> None:
 
     logging.info(f"EXECUTED SUCCESSFULLY: Logged in")
     time.sleep(random_timeout)
+    login_successful = True
+    if login_successful:
+        # Delete the captcha image after use
+        os.remove('captcha.jpg')
+        logging.info("CAPTCHA: Image deleted after successful login.")
 
     page.get_by_text("Service", exact=True).click()
     logging.info(f"EXECUTED SUCCESSFULLY: Service")
@@ -500,9 +648,12 @@ def run_tennis(playwright: Playwright) -> None:
             latency_part2_mid = time.time()
             latency_part2_report_mid = latency_part2_mid - latency_part2_start
             print(Fore.GREEN +
-                  f"Booking page accessed at {datetime.now(beijing)} in {latency_part2_report_mid:.2f} seconds."
+                  f"Booking page accessed at {datetime.now(beijing).strftime('%H:%M:%S:%f')} "
+                  f"in {latency_part2_report_mid:.2f} seconds."
                   + Style.RESET_ALL)
-            logging.info(f"Booking page accessed at {datetime.now(beijing)} in {latency_part2_report_mid:.2f} seconds")
+            logging.info(
+                f"Booking page accessed at {datetime.now(beijing).strftime('%H:%M:%S:%f')} "
+                f"in {latency_part2_report_mid:.2f} seconds")
 
         if not element_clicked:
             print(
@@ -513,25 +664,27 @@ def run_tennis(playwright: Playwright) -> None:
     # Proceed with the rest of the script after successfully clicking the element
 
     # ### TEST VISIBLE + SELECTOR AT THE SAME TIME### END
-    #          ############################### HERE COMES THE MAGIC ###############################
-    #       ############################### WORKS, DO NOT TOUCH THIS ###############################
+    #          ############################### HERE ENDS THE MAGIC ###############################
+    #               ############################### IMPROVE ###############################
 
     # Timeslot selection
     if chosen_timeslot == '7':
+        time.sleep(timeout_booking_page)
         page1.locator(".inner-seat > div").first.click()
-        logging.info(f"EXECUTED SUCCESSFULLY: TIMESLOT SELECTED")
+        logging.info(f"EXECUTED SUCCESSFULLY: TIMESLOT 7 SELECTED")
     else:
+        time.sleep(timeout_booking_page)
         page1.locator(timeslots_tennis[int(chosen_timeslot)]).click()
         logging.info(f"EXECUTED SUCCESSFULLY: TIMESLOT {timeslots_tennis[int(chosen_timeslot)]} SELECTED")
 
-    time.sleep(timeout_booking_page)
+    # time.sleep(timeout_booking_page) # maybe not needed here
     page1.get_by_role("button", name="立即下单").click()
     logging.info(f"EXECUTED SUCCESSFULLY: 立即下单")
     time.sleep(timeout_booking_page)
     page1.locator("label span").nth(1).click()
-    time.sleep(timeout_booking_page)
+    # time.sleep(timeout_booking_page) # maybe not needed here
     logging.info(f"EXECUTED SUCCESSFULLY: label span")
-    time.sleep(timeout_booking_page)
+    # time.sleep(timeout_booking_page) # maybe not needed here
     page1.get_by_role("button", name="提交订单").click()  # As fast as possible until here
     logging.info(f"EXECUTED SUCCESSFULLY: 提交订单")
     time.sleep(timeout_booking_page)
@@ -541,10 +694,15 @@ def run_tennis(playwright: Playwright) -> None:
     latency_part2_end = time.time()
     latency_part2_report_end = latency_part2_end - latency_part2_start
     print(
-        Fore.GREEN + f"\n\033[1mBooking completed at {datetime.now(beijing)} "
+        Fore.GREEN + f"\n\033[1mBooking completed at {datetime.now(beijing).strftime('%H:%M:%S:%f')} "
                      f"in {latency_part2_report_end:.2f} seconds!\033[0m" + Style.RESET_ALL)
-    logging.info(f"Booking completed at {datetime.now(beijing)} in {latency_part2_report_end:.2f} seconds!")
+    logging.info(
+        f"Booking completed at {datetime.now(beijing).strftime('%H:%M:%S:%f')} "
+        f"in {latency_part2_report_end:.2f} seconds!")
     logging.error("Script terminated due to an error.")
+
+    extract_latency_logs('booking_logs/SJTU_booking_log.log', 'booking_logs/Stats.log')
+
     page1.get_by_role("button", name="立即支付").click()
     logging.info(f"EXECUTED SUCCESSFULLY: 立即支付")
     time.sleep(random_timeout)
@@ -583,7 +741,7 @@ def run_tennis(playwright: Playwright) -> None:
 
 
 def run_badminton(playwright: Playwright) -> None:
-    global animations, timeslots_badminton
+    global animations, timeslots_badminton, automatic_captcha, captcha_input
     current_datetime = datetime.now(beijing)
     cutoff_time = current_datetime.replace(hour=time_restriction_hour, minute=15, second=0, microsecond=0)
     # Check if the current time is past the cutoff time
@@ -673,15 +831,48 @@ def run_badminton(playwright: Playwright) -> None:
 
     # Login
     while True:
+        # AUTOMATIC CAPTCHA
+        if auto_captcha == 1:
+            page.wait_for_selector('img#captcha-img')
+            logging.info("CAPTCHA: img#captcha-img")
+
+            # Get the Data URI of the captcha image
+            image_data_uri = page.evaluate("""() => {
+                const img = document.querySelector('img#captcha-img');
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                ctx.drawImage(img, 0, 0);
+                return canvas.toDataURL('image/jpeg');
+            }""")
+
+            # Extract base64 data from URI
+            base64_data = image_data_uri.split(',')[1]
+            image_data = base64.b64decode(base64_data)
+            logging.info("CAPTCHA: Extracted base64 data from URI")
+
+            # Save the captcha image
+            image_path = 'captcha.jpg'
+            with open(image_path, 'wb') as image_file:
+                image_file.write(image_data)
+            logging.info("CAPTCHA: Saved the captcha image")
+
+            extracted_text = ocr_core(image_path)
+            automatic_captcha = extracted_text
+            logging.info(f"CAPTCHA: OCR performed successfully({extracted_text})")
+
+        # INPUTS
         latency_part1_start = time.time()
         # Prompt the user for their account details
         account_input = input("\033[1mPlease enter your username: \033[0m")
         password_input = getpass.getpass("\033[1mPlease enter your password: \033[0m")
-        captcha_input = input("\033[1mPlease enter the captcha: \033[0m")
+        if auto_captcha != 1:
+            captcha_input = input("\033[1mPlease enter the captcha: \033[0m")
 
         # Animation prompt
         logging.info(f"OS: {find_os()}")
-        if find_os() == 'MacOS':
+        if find_os() == 'MacOS' and account_input not in animations_not_installed_macos:
             animations = input("\033[1mWould you like to see animations while waiting? (Y/N): \033[0m")
             logging.info(f"Animations: {animations}")
 
@@ -695,7 +886,10 @@ def run_badminton(playwright: Playwright) -> None:
         page.get_by_placeholder("Password").click()
         page.get_by_placeholder("Password").fill(password_input)
         page.get_by_placeholder("Captcha").click()
-        page.get_by_placeholder("Captcha").fill(captcha_input)
+        if auto_captcha == 1:
+            page.get_by_placeholder("Captcha").fill(automatic_captcha)
+        else:
+            page.get_by_placeholder("Captcha").fill(captcha_input)
         page.get_by_role("button", name="SIGN IN").click()
 
         # Cmatrix animation
@@ -709,6 +903,8 @@ def run_badminton(playwright: Playwright) -> None:
 
         # Check for login failure
         if page.is_visible("text=Wrong username or password") or page.is_visible("text=Wrong captcha"):
+            if page.is_visible("text=Wrong captcha"):
+                logging.info("CAPTCHA: WRONG CAPTCHA")
             print(Fore.RED + "Login failed. Please try again." + Style.RESET_ALL)
         else:
             print(Fore.GREEN + "Login successful, proceeding..." + Style.RESET_ALL)
@@ -716,6 +912,12 @@ def run_badminton(playwright: Playwright) -> None:
 
     logging.info(f"EXECUTED SUCCESSFULLY: Logged in")
     time.sleep(random_timeout)
+    login_successful = True
+    if login_successful:
+        # Delete the captcha image after use
+        os.remove('captcha.jpg')
+        logging.info("CAPTCHA: Image deleted after successful login.")
+
     page.get_by_text("Service", exact=True).click()
     logging.info(f"EXECUTED SUCCESSFULLY: Service")
     time.sleep(random_timeout)
@@ -847,9 +1049,12 @@ def run_badminton(playwright: Playwright) -> None:
             latency_part2_mid = time.time()
             latency_part2_report_mid = latency_part2_mid - latency_part2_start
             print(Fore.GREEN +
-                  f"Booking page accessed at {datetime.now(beijing)} in {latency_part2_report_mid:.2f} seconds"
+                  f"Booking page accessed at {datetime.now(beijing).strftime('%H:%M:%S:%f')} "
+                  f"in {latency_part2_report_mid:.2f} seconds"
                   + Style.RESET_ALL)
-            logging.info(f"Booking page accessed at {datetime.now(beijing)} in {latency_part2_report_mid:.2f} seconds")
+            logging.info(
+                f"Booking page accessed at {datetime.now(beijing).strftime('%H:%M:%S:%f')} "
+                f"in {latency_part2_report_mid:.2f} seconds")
 
         if not element_clicked:
             print(
@@ -860,25 +1065,27 @@ def run_badminton(playwright: Playwright) -> None:
     # Proceed with the rest of the script after successfully clicking the element
 
     # ### TEST VISIBLE + SELECTOR AT THE SAME TIME### END
-    #          ############################### HERE COMES THE MAGIC ###############################
-    #       ############################### WORKS, DO NOT TOUCH THIS ###############################
+    #          ############################### HERE ENDS THE MAGIC ###############################
+    #               ############################### IMPROVE ###############################
 
     # Timeslot selection
     if chosen_timeslot == '7':
+        time.sleep(timeout_booking_page)
         page1.locator(seven_badminton[0]).first.click()
-        logging.info(f"EXECUTED SUCCESSFULLY: TIMESLOT SELECTED")
+        logging.info(f"EXECUTED SUCCESSFULLY: TIMESLOT 7 SELECTED")
     else:
+        time.sleep(timeout_booking_page)
         page1.locator(timeslots_badminton[int(chosen_timeslot)]).click()
         logging.info(f"EXECUTED SUCCESSFULLY: TIMESLOT {timeslots_badminton[int(chosen_timeslot)]} SELECTED")
 
-    time.sleep(timeout_booking_page)
+    # time.sleep(timeout_booking_page) # maybe not needed here
     page1.get_by_role("button", name="立即下单").click()
     logging.info(f"EXECUTED SUCCESSFULLY: 立即下单")
     time.sleep(timeout_booking_page)
     page1.locator("label span").nth(1).click()
-    time.sleep(timeout_booking_page)
+    # time.sleep(timeout_booking_page) # maybe not needed here
     logging.info(f"EXECUTED SUCCESSFULLY: label span")
-    time.sleep(timeout_booking_page)
+    # time.sleep(timeout_booking_page) # maybe not needed here
     page1.get_by_role("button", name="提交订单").click()  # As fast as possible until here
     logging.info(f"EXECUTED SUCCESSFULLY: 提交订单")
     time.sleep(timeout_booking_page)
@@ -888,10 +1095,14 @@ def run_badminton(playwright: Playwright) -> None:
     latency_part2_end = time.time()
     latency_part2_report_end = latency_part2_end - latency_part2_start
     print(
-        Fore.GREEN + f"\n\033[1mBooking completed at {datetime.now(beijing)} "
+        Fore.GREEN + f"\n\033[1mBooking completed at {datetime.now(beijing).strftime('%H:%M:%S:%f')} "
                      f"in {latency_part2_report_end:.2f} seconds!\033[0m" + Style.RESET_ALL)
-    logging.info(f"Booking completed at {datetime.now(beijing)} in {latency_part2_report_end:.2f} seconds!")
+    logging.info(
+        f"Booking completed at {datetime.now(beijing).strftime('%H:%M:%S:%f')} "
+        f"in {latency_part2_report_end:.2f} seconds!")
     logging.error("Script terminated due to an error.")
+
+    extract_latency_logs('booking_logs/SJTU_booking_log.log', 'booking_logs/Stats.log')
 
     page1.get_by_role("button", name="立即支付").click()
     logging.info(f"EXECUTED SUCCESSFULLY: 立即支付")

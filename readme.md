@@ -13,48 +13,21 @@ Before running the script, please ensure:
 - Your system's VPN is turned off if required to access the booking site.
 - Your SJTU Jaccount is set to English to ensure the script navigates correctly.
 
-
-
-In case dependencies are not installed yet, execute the following command in your terminal or command prompt:
+- In case dependencies are not installed yet, execute the following command in your terminal or command prompt:
 pip install -r requirements.txt
+or manually:
+pip install pytesseract requests Pillow colorama playwright pytz
+playwright install chromium
 
-For animations, install the following:
+- For animations, install the following:
 sudo apt-get update
 sudo apt-get install cmatrix
-
-In case python is not installed yet, execute the following commands in your terminal or command prompt:
-
-MacOS: 
-
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> /Users/your-username/.zprofile
-eval "$(/opt/homebrew/bin/brew shellenv)"
-
-brew install python
-
-
-Widows: 
-
-Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
-
-choco install python
-
-
-Regardless of your operating system, you can verify that Python is installed correctly by opening a terminal or command prompt and typing:
-
-python --version
-
-python3 --version
-
+sudo apt-get install asciiquarium
 
 ## Running the Script
 
 To run the script, execute the following command in your terminal or command prompt:
 
-python sjtu_tennis.py
-
-
-Follow the on-screen prompts for captcha input and time slot selection.
-
+python SJTU_booking.py
 
 If you encounter an error message or need further assistance, please contact me on WeChat: `kasyan98`
