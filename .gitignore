@@ -1,17 +1,18 @@
 *.env
 todo.txt
 testing_files/tennis_alt_timeslot.py
-functions/notes.txt
+archive/functions/notes.txt
 testing_files/badminton_testing.py
 *.log
 booking_logs
 tests
-archive_methods
+archive/archive_methods
 testing_files
+tennis.app
+config.ini
 
 captcha.jpg
 run_sjtu.sh
-todo.txt
 
 # Created by .ignore support plugin (hsz.mobi)
 ### Diff template
@@ -103,7 +104,6 @@ cover/
 *.pot
 
 # Django stuff:
-*.log
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
