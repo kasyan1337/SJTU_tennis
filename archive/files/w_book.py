@@ -20,7 +20,7 @@ init()
 chosen_timeout = 200  # Timeout for waiting for element to appear (booking page)
 random_timeout = 0.5  # Random timeout for waiting between actions
 timeout_booking_page = 0.1  # Timeout for waiting between actions on the booking page
-time_restriction_hour = 20  # Hour after which the script will not run +15(12:15)
+cutoff_time = 20  # Hour after which the script will not run +15(12:15)
 updater = 1  # Update the script from GitHub (1 for ON)
 
 
@@ -44,7 +44,7 @@ def start_logs():
                  f"chosen_timeout {chosen_timeout} ms\n"
                  f"random_timeout {random_timeout} s\n"
                  f"timeout_booking_page {timeout_booking_page} s\n"
-                 f"time_restriction_hour {time_restriction_hour}\n"
+                 f"time_restriction_hour {cutoff_time}\n"
                  f"updater {updater}")
 
 
@@ -189,7 +189,7 @@ def tennis_or_badminton():
 
 def run_tennis(playwright: Playwright) -> None:
     current_datetime = datetime.now(beijing)
-    cutoff_time = current_datetime.replace(hour=time_restriction_hour, minute=15, second=0, microsecond=0)
+    cutoff_time = current_datetime.replace(hour=cutoff_time, minute=15, second=0, microsecond=0)
     # Check if the current time is past the cutoff time
     if current_datetime > cutoff_time:
         print("It is already past 12:15PM. You should try again tomorrow before 12:00.")
@@ -486,7 +486,7 @@ def run_badminton(playwright: Playwright) -> None:
         os.system('cls' if os.name == 'nt' else 'clear')
 
     current_datetime = datetime.now(beijing)
-    cutoff_time = current_datetime.replace(hour=time_restriction_hour, minute=15, second=0, microsecond=0)
+    cutoff_time = current_datetime.replace(hour=cutoff_time, minute=15, second=0, microsecond=0)
     # Check if the current time is past the cutoff time
     if current_datetime > cutoff_time:
         print("It is already past 12:15PM. You should try again tomorrow before 12:00.")
