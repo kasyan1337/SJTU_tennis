@@ -28,8 +28,8 @@ timeout_booking_page = 0.1  # Timeout for waiting between actions on the booking
 refresh_booking_page_at = 300000  # Refresh the booking page at this time (microseconds)
 
 #      ############################### USER SETTINGS ###############################
-cutoff_time = 0  # Time restriction for booking (1 for ON)
-updater = 0  # Update the script from GitHub (1 for ON)
+cutoff_time = 1  # Time restriction for booking (1 for ON)
+updater = 1  # Update the script from GitHub (1 for ON)
 
 #       ############################### DATABASE ###############################
 
