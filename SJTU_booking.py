@@ -16,8 +16,7 @@ import pytesseract
 import requests
 from PIL import Image
 from colorama import init, Fore, Style
-from playwright.sync_api import Playwright, sync_playwright
-from playwright.sync_api import TimeoutError
+from playwright.sync_api import Playwright, sync_playwright, TimeoutError
 from pytz import timezone
 
 init()
@@ -29,8 +28,8 @@ timeout_booking_page = 0.1  # Timeout for waiting between actions on the booking
 refresh_booking_page_at = 300000  # Refresh the booking page at this time (microseconds)
 
 #      ############################### USER SETTINGS ###############################
-cutoff_time = 1  # Time restriction for booking (1 for ON)
-updater = 1  # Update the script from GitHub (1 for ON)
+cutoff_time = 0  # Time restriction for booking (1 for ON)
+updater = 0  # Update the script from GitHub (1 for ON)
 
 #       ############################### DATABASE ###############################
 
@@ -849,7 +848,8 @@ def run_common(playwright: Playwright) -> None:
     # script start
 
     browser = playwright.chromium.launch(headless=False)
-    context = browser.new_context()
+    context = browser.new_context(record_video_dir="booking_logs")
+    context.set_default_timeout(900000)  # Set default timeout to 15 mins
     page = context.new_page()
     page.goto(
         "https://my.sjtu.edu.cn/ui/me")
